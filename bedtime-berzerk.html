@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedtime Berzerk</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #gameCanvas {
+            border: 4px solid #4a4a6a;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(100, 100, 200, 0.5);
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #inventory {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 15px;
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .inv-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: white;
+            font-size: 14px;
+        }
+        .inv-icon {
+            font-size: 20px;
+        }
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 32px;
+            text-align: center;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.9);
+            pointer-events: none;
+            z-index: 20;
+        }
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 30;
+            border-radius: 10px;
+        }
+        #startScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ffcc00;
+            text-shadow: 3px 3px 0 #ff6600, 6px 6px 0 #cc3300;
+        }
+        #startScreen p {
+            font-size: 18px;
+            margin-bottom: 10px;
+            max-width: 500px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        #startScreen .controls {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        #startScreen button {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 24px;
+            background: linear-gradient(180deg, #4CAF50, #2E7D32);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #startScreen button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.5);
+        }
+        #backButton {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 40;
+        }
+        #backButton:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" id="backButton">Back to Arcade</a>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="720" height="720"></canvas>
+        <div id="ui">
+            <span id="timer">Time: 0:00</span>
+            <span id="itemCount">Items: 0/12</span>
+        </div>
+        <div id="inventory">
+            <div class="inv-item"><span class="inv-icon">🛏️</span><span id="pillowCount">0/9</span></div>
+            <div class="inv-item"><span class="inv-icon">🥤</span><span id="cupCount">0/1</span></div>
+            <div class="inv-item"><span class="inv-icon">🏋️</span><span id="weightCount">0/2</span></div>
+        </div>
+        <div id="message"></div>
+        <div id="startScreen">
+            <h1>Bedtime Berzerk</h1>
+            <p>It's bedtime, but you need to collect all your stuff first!</p>
+            <p>Gather 9 pillows, your Stanley cup, and 2 weights while avoiding the monsters lurking in the dark!</p>
+            <div class="controls">
+                <p><strong>Controls:</strong> Arrow Keys or WASD to move</p>
+                <p>Collect all items and return to your bed to win!</p>
+                <p>If a monster catches you, you'll drop an item. No items = Game Over!</p>
+            </div>
+            <button onclick="startGame()">Start Game</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game constants
+        const TILE_SIZE = 240; // Each section is 240x240
+        const PLAYER_SIZE = 50;
+        const ITEM_SIZE = 30;
+        const MONSTER_SIZE = 55;
+        const PLAYER_SPEED = 4;
+        const MONSTER_SPEED = 2.5;
+        const MONSTER_CHASE_TIME = 8000; // 8 seconds before monster swaps
+        const MAX_MONSTERS = 3;
+
+        // Pillow names (formal names!)
+        const PILLOW_NAMES = [
+            'Louis', 'Carlos', 'Mufasa', 'Gregory', 'Stephen',
+            'Theodore', 'Winston', 'Reginald', 'Bartholomew'
+        ];
+
+        // Monster types
+        const MONSTER_TYPES = [
+            { name: 'Grumble', color: '#8B5CF6', eyeColor: '#FFD700', body: 'blob' },
+            { name: 'Snortz', color: '#EC4899', eyeColor: '#00FF00', body: 'spiky' },
+            { name: 'Droolius', color: '#10B981', eyeColor: '#FF6B6B', body: 'round' },
+            { name: 'Munchkin', color: '#F59E0B', eyeColor: '#00BFFF', body: 'square' },
+            { name: 'Wobbles', color: '#6366F1', eyeColor: '#FFB6C1', body: 'tall' }
+        ];
+
+        // Game state
+        let gameState = {
+            running: false,
+            won: false,
+            lost: false,
+            startTime: 0,
+            elapsedTime: 0,
+            player: { x: 0, y: 0 },
+            bedPosition: { sectionX: 0, sectionY: 0 },
+            items: [],
+            collectedItems: { pillows: 0, cup: 0, weights: 0 },
+            monsters: [],
+            litSections: new Set(),
+            keys: {},
+            particles: [],
+            wordBubbles: []
+        };
+
+        // Load player image
+        const playerImg = new Image();
+        playerImg.src = 'kid-character.png';
+
+        function initGame() {
+            // Reset game state
+            gameState.running = false;
+            gameState.won = false;
+            gameState.lost = false;
+            gameState.startTime = 0;
+            gameState.elapsedTime = 0;
+            gameState.collectedItems = { pillows: 0, cup: 0, weights: 0 };
+            gameState.items = [];
+            gameState.monsters = [];
+            gameState.litSections = new Set();
+            gameState.particles = [];
+            gameState.wordBubbles = [];
+
+            // Random starting section (this is the bed)
+            gameState.bedPosition.sectionX = Math.floor(Math.random() * 3);
+            gameState.bedPosition.sectionY = Math.floor(Math.random() * 3);
+
+            // Place player in center of starting section
+            gameState.player.x = gameState.bedPosition.sectionX * TILE_SIZE + TILE_SIZE / 2;
+            gameState.player.y = gameState.bedPosition.sectionY * TILE_SIZE + TILE_SIZE / 2;
+
+            // Light up starting section
+            const startKey = `${gameState.bedPosition.sectionX},${gameState.bedPosition.sectionY}`;
+            gameState.litSections.add(startKey);
+
+            // Generate items randomly
+            generateItems();
+
+            // Spawn initial monsters
+            spawnMonsters();
+        }
+
+        function generateItems() {
+            const allPositions = [];
+
+            // Generate possible positions (avoiding bed section initially)
+            for (let sx = 0; sx < 3; sx++) {
+                for (let sy = 0; sy < 3; sy++) {
+                    // Add multiple positions per section
+                    for (let i = 0; i < 3; i++) {
+                        allPositions.push({
+                            x: sx * TILE_SIZE + 40 + Math.random() * (TILE_SIZE - 80),
+                            y: sy * TILE_SIZE + 40 + Math.random() * (TILE_SIZE - 80),
+                            sectionX: sx,
+                            sectionY: sy
+                        });
+                    }
+                }
+            }
+
+            // Shuffle positions
+            for (let i = allPositions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allPositions[i], allPositions[j]] = [allPositions[j], allPositions[i]];
+            }
+
+            // Assign items to positions
+            const itemTypes = [
+                ...Array(9).fill('pillow'),
+                'cup',
+                'weight', 'weight'
+            ];
+
+            // Shuffle pillow names
+            const shuffledNames = [...PILLOW_NAMES].sort(() => Math.random() - 0.5);
+            let pillowIndex = 0;
+            let weightIndex = 0;
+
+            let posIndex = 0;
+            for (const type of itemTypes) {
+                // Skip positions in bed section for first few items
+                while (posIndex < allPositions.length &&
+                       allPositions[posIndex].sectionX === gameState.bedPosition.sectionX &&
+                       allPositions[posIndex].sectionY === gameState.bedPosition.sectionY) {
+                    posIndex++;
+                }
+
+                if (posIndex >= allPositions.length) {
+                    posIndex = 0; // Fallback
+                }
+
+                const item = {
+                    x: allPositions[posIndex].x,
+                    y: allPositions[posIndex].y,
+                    type: type,
+                    collected: false
+                };
+
+                // Assign name to pillows
+                if (type === 'pillow') {
+                    item.name = shuffledNames[pillowIndex++];
+                }
+
+                // Assign colors to weights (blue and orange)
+                if (type === 'weight') {
+                    item.color = weightIndex === 0 ? '#2563EB' : '#F97316'; // Blue first, then orange
+                    weightIndex++;
+                }
+
+                gameState.items.push(item);
+                posIndex++;
+            }
+        }
+
+        function spawnMonsters() {
+            // Start with 1 monster, add more over time
+            spawnSingleMonster();
+
+            // Add second monster after 5 seconds
+            setTimeout(() => {
+                if (gameState.running && gameState.monsters.length < MAX_MONSTERS) {
+                    spawnSingleMonster();
+                }
+            }, 5000);
+
+            // Add third monster after 12 seconds
+            setTimeout(() => {
+                if (gameState.running && gameState.monsters.length < MAX_MONSTERS) {
+                    spawnSingleMonster();
+                }
+            }, 12000);
+        }
+
+        function spawnSingleMonster() {
+            // Pick a random unlit section, or any section far from player
+            let spawnX, spawnY;
+            let attempts = 0;
+
+            do {
+                const sx = Math.floor(Math.random() * 3);
+                const sy = Math.floor(Math.random() * 3);
+                spawnX = sx * TILE_SIZE + TILE_SIZE / 2;
+                spawnY = sy * TILE_SIZE + TILE_SIZE / 2;
+                attempts++;
+            } while (attempts < 20 && distance(spawnX, spawnY, gameState.player.x, gameState.player.y) < TILE_SIZE);
+
+            const type = MONSTER_TYPES[Math.floor(Math.random() * MONSTER_TYPES.length)];
+
+            const monster = {
+                x: spawnX,
+                y: spawnY,
+                type: type,
+                spawnTime: Date.now(),
+                active: true
+            };
+
+            gameState.monsters.push(monster);
+
+            // Set up swap timer
+            setTimeout(() => swapMonster(monster), MONSTER_CHASE_TIME);
+        }
+
+        function swapMonster(monster) {
+            if (!gameState.running || !monster.active) return;
+
+            // Deactivate this monster
+            monster.active = false;
+
+            // Create fade out effect
+            for (let i = 0; i < 10; i++) {
+                gameState.particles.push({
+                    x: monster.x,
+                    y: monster.y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    life: 30,
+                    color: monster.type.color
+                });
+            }
+
+            // Remove from array
+            const index = gameState.monsters.indexOf(monster);
+            if (index > -1) {
+                gameState.monsters.splice(index, 1);
+            }
+
+            // Spawn replacement
+            setTimeout(() => {
+                if (gameState.running && gameState.monsters.length < MAX_MONSTERS) {
+                    spawnSingleMonster();
+                }
+            }, 1000);
+        }
+
+        function distance(x1, y1, x2, y2) {
+            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            initGame();
+            gameState.running = true;
+            gameState.startTime = Date.now();
+            gameLoop();
+        }
+
+        function updateGame() {
+            if (!gameState.running) return;
+
+            // Update timer
+            gameState.elapsedTime = Date.now() - gameState.startTime;
+
+            // Player movement
+            let dx = 0, dy = 0;
+            if (gameState.keys['ArrowLeft'] || gameState.keys['KeyA']) dx -= PLAYER_SPEED;
+            if (gameState.keys['ArrowRight'] || gameState.keys['KeyD']) dx += PLAYER_SPEED;
+            if (gameState.keys['ArrowUp'] || gameState.keys['KeyW']) dy -= PLAYER_SPEED;
+            if (gameState.keys['ArrowDown'] || gameState.keys['KeyS']) dy += PLAYER_SPEED;
+
+            // Normalize diagonal movement
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.707;
+                dy *= 0.707;
+            }
+
+            // Update player position with bounds
+            gameState.player.x = Math.max(PLAYER_SIZE/2, Math.min(canvas.width - PLAYER_SIZE/2, gameState.player.x + dx));
+            gameState.player.y = Math.max(PLAYER_SIZE/2, Math.min(canvas.height - PLAYER_SIZE/2, gameState.player.y + dy));
+
+            // Update lit sections
+            const currentSectionX = Math.floor(gameState.player.x / TILE_SIZE);
+            const currentSectionY = Math.floor(gameState.player.y / TILE_SIZE);
+            const sectionKey = `${currentSectionX},${currentSectionY}`;
+
+            if (!gameState.litSections.has(sectionKey)) {
+                gameState.litSections.add(sectionKey);
+                // Add reveal particles
+                for (let i = 0; i < 20; i++) {
+                    gameState.particles.push({
+                        x: currentSectionX * TILE_SIZE + Math.random() * TILE_SIZE,
+                        y: currentSectionY * TILE_SIZE + Math.random() * TILE_SIZE,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: -Math.random() * 3,
+                        life: 40,
+                        color: '#FFD700'
+                    });
+                }
+            }
+
+            // Check item collection
+            for (const item of gameState.items) {
+                if (!item.collected && distance(gameState.player.x, gameState.player.y, item.x, item.y) < (PLAYER_SIZE + ITEM_SIZE) / 2) {
+                    item.collected = true;
+                    if (item.type === 'pillow') gameState.collectedItems.pillows++;
+                    else if (item.type === 'cup') gameState.collectedItems.cup++;
+                    else if (item.type === 'weight') gameState.collectedItems.weights++;
+
+                    // Collection particles
+                    for (let i = 0; i < 15; i++) {
+                        gameState.particles.push({
+                            x: item.x,
+                            y: item.y,
+                            vx: (Math.random() - 0.5) * 6,
+                            vy: (Math.random() - 0.5) * 6,
+                            life: 25,
+                            color: item.type === 'pillow' ? '#FFFFFF' : item.type === 'cup' ? '#40E0D0' : '#888888'
+                        });
+                    }
+
+                    // Create word bubble for pillows
+                    if (item.type === 'pillow' && item.name) {
+                        gameState.wordBubbles.push({
+                            x: item.x,
+                            y: item.y,
+                            text: item.name,
+                            life: 120, // 2 seconds at 60fps
+                            startY: item.y
+                        });
+                    }
+                }
+            }
+
+            // Update monsters
+            for (const monster of gameState.monsters) {
+                if (!monster.active) continue;
+
+                // Move toward player
+                const dx = gameState.player.x - monster.x;
+                const dy = gameState.player.y - monster.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 0) {
+                    monster.x += (dx / dist) * MONSTER_SPEED;
+                    monster.y += (dy / dist) * MONSTER_SPEED;
+                }
+
+                // Check collision with player
+                if (distance(gameState.player.x, gameState.player.y, monster.x, monster.y) < (PLAYER_SIZE + MONSTER_SIZE) / 2 - 10) {
+                    handleMonsterCatch(monster);
+                }
+            }
+
+            // Update particles
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const p = gameState.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) {
+                    gameState.particles.splice(i, 1);
+                }
+            }
+
+            // Update word bubbles
+            for (let i = gameState.wordBubbles.length - 1; i >= 0; i--) {
+                const bubble = gameState.wordBubbles[i];
+                bubble.y -= 1; // Float upward
+                bubble.life--;
+                if (bubble.life <= 0) {
+                    gameState.wordBubbles.splice(i, 1);
+                }
+            }
+
+            // Check win condition
+            const totalCollected = gameState.collectedItems.pillows + gameState.collectedItems.cup + gameState.collectedItems.weights;
+            if (totalCollected === 12) {
+                // Check if player is back at bed
+                const atBed = currentSectionX === gameState.bedPosition.sectionX &&
+                              currentSectionY === gameState.bedPosition.sectionY;
+                if (atBed) {
+                    gameState.won = true;
+                    gameState.running = false;
+                }
+            }
+        }
+
+        function handleMonsterCatch(monster) {
+            const totalItems = gameState.collectedItems.pillows + gameState.collectedItems.cup + gameState.collectedItems.weights;
+
+            if (totalItems === 0) {
+                // Game over!
+                gameState.lost = true;
+                gameState.running = false;
+                return;
+            }
+
+            // Lose a random item
+            const itemTypes = [];
+            if (gameState.collectedItems.pillows > 0) itemTypes.push('pillow');
+            if (gameState.collectedItems.cup > 0) itemTypes.push('cup');
+            if (gameState.collectedItems.weights > 0) itemTypes.push('weight');
+
+            const lostType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+
+            if (lostType === 'pillow') gameState.collectedItems.pillows--;
+            else if (lostType === 'cup') gameState.collectedItems.cup--;
+            else if (lostType === 'weight') gameState.collectedItems.weights--;
+
+            // Drop item near player
+            gameState.items.push({
+                x: gameState.player.x + (Math.random() - 0.5) * 100,
+                y: gameState.player.y + (Math.random() - 0.5) * 100,
+                type: lostType,
+                collected: false
+            });
+
+            // Knockback player
+            const dx = gameState.player.x - monster.x;
+            const dy = gameState.player.y - monster.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            gameState.player.x += (dx / dist) * 80;
+            gameState.player.y += (dy / dist) * 80;
+
+            // Keep in bounds
+            gameState.player.x = Math.max(PLAYER_SIZE/2, Math.min(canvas.width - PLAYER_SIZE/2, gameState.player.x));
+            gameState.player.y = Math.max(PLAYER_SIZE/2, Math.min(canvas.height - PLAYER_SIZE/2, gameState.player.y));
+
+            // Push monster back too
+            monster.x -= (dx / dist) * 100;
+            monster.y -= (dy / dist) * 100;
+
+            // Hit particles
+            for (let i = 0; i < 20; i++) {
+                gameState.particles.push({
+                    x: gameState.player.x,
+                    y: gameState.player.y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 30,
+                    color: '#FF4444'
+                });
+            }
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#0a0a15';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw sections
+            for (let sx = 0; sx < 3; sx++) {
+                for (let sy = 0; sy < 3; sy++) {
+                    const sectionKey = `${sx},${sy}`;
+                    const isLit = gameState.litSections.has(sectionKey);
+                    const isBed = sx === gameState.bedPosition.sectionX && sy === gameState.bedPosition.sectionY;
+
+                    const x = sx * TILE_SIZE;
+                    const y = sy * TILE_SIZE;
+
+                    if (isLit) {
+                        // Lit section
+                        const gradient = ctx.createRadialGradient(
+                            x + TILE_SIZE/2, y + TILE_SIZE/2, 0,
+                            x + TILE_SIZE/2, y + TILE_SIZE/2, TILE_SIZE
+                        );
+                        gradient.addColorStop(0, '#2a2a4a');
+                        gradient.addColorStop(1, '#1a1a2e');
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+                        // Draw bed marker
+                        if (isBed) {
+                            ctx.fillStyle = 'rgba(255, 200, 100, 0.3)';
+                            ctx.beginPath();
+                            ctx.arc(x + TILE_SIZE/2, y + TILE_SIZE/2, 60, 0, Math.PI * 2);
+                            ctx.fill();
+
+                            // Bed icon
+                            ctx.font = '40px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('🛏️', x + TILE_SIZE/2, y + TILE_SIZE/2);
+                        }
+                    } else {
+                        // Dark section
+                        ctx.fillStyle = '#050508';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+                        // Mysterious glow
+                        const gradient = ctx.createRadialGradient(
+                            x + TILE_SIZE/2, y + TILE_SIZE/2, 0,
+                            x + TILE_SIZE/2, y + TILE_SIZE/2, TILE_SIZE/2
+                        );
+                        gradient.addColorStop(0, 'rgba(50, 50, 80, 0.2)');
+                        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                    }
+
+                    // Section border
+                    ctx.strokeStyle = isLit ? '#3a3a5a' : '#1a1a2a';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                }
+            }
+
+            // Draw items
+            for (const item of gameState.items) {
+                if (item.collected) continue;
+
+                // Check if in lit section
+                const itemSectionX = Math.floor(item.x / TILE_SIZE);
+                const itemSectionY = Math.floor(item.y / TILE_SIZE);
+                const sectionKey = `${itemSectionX},${itemSectionY}`;
+
+                if (!gameState.litSections.has(sectionKey)) continue;
+
+                ctx.save();
+
+                if (item.type === 'pillow') {
+                    drawPillow(item.x, item.y);
+                } else if (item.type === 'cup') {
+                    drawStanleyCup(item.x, item.y);
+                } else if (item.type === 'weight') {
+                    drawDumbbell(item.x, item.y, item.color);
+                }
+
+                ctx.restore();
+            }
+
+            // Draw monsters
+            for (const monster of gameState.monsters) {
+                if (!monster.active) continue;
+
+                drawMonster(monster);
+            }
+
+            // Draw particles
+            for (const p of gameState.particles) {
+                ctx.globalAlpha = p.life / 40;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Draw word bubbles
+            for (const bubble of gameState.wordBubbles) {
+                const alpha = Math.min(1, bubble.life / 30); // Fade out in last 0.5 seconds
+                ctx.globalAlpha = alpha;
+
+                // Measure text for bubble size
+                ctx.font = 'bold 18px "Comic Sans MS", cursive, sans-serif';
+                const textWidth = ctx.measureText(bubble.text).width;
+                const bubbleWidth = textWidth + 24;
+                const bubbleHeight = 32;
+                const bubbleX = bubble.x - bubbleWidth / 2;
+                const bubbleY = bubble.y - bubbleHeight / 2;
+
+                // Draw bubble background
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw bubble tail (pointing down)
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.moveTo(bubble.x - 8, bubbleY + bubbleHeight);
+                ctx.lineTo(bubble.x, bubbleY + bubbleHeight + 12);
+                ctx.lineTo(bubble.x + 8, bubbleY + bubbleHeight);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw text
+                ctx.fillStyle = '#6B4BA6';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(bubble.text, bubble.x, bubble.y);
+            }
+            ctx.globalAlpha = 1;
+
+            // Draw player
+            if (playerImg.complete) {
+                ctx.save();
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 20;
+                ctx.drawImage(
+                    playerImg,
+                    gameState.player.x - PLAYER_SIZE/2,
+                    gameState.player.y - PLAYER_SIZE/2,
+                    PLAYER_SIZE,
+                    PLAYER_SIZE
+                );
+                ctx.restore();
+            } else {
+                // Fallback circle
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(gameState.player.x, gameState.player.y, PLAYER_SIZE/2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Update UI
+            const seconds = Math.floor(gameState.elapsedTime / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            document.getElementById('timer').textContent = `Time: ${minutes}:${secs.toString().padStart(2, '0')}`;
+
+            const totalItems = gameState.collectedItems.pillows + gameState.collectedItems.cup + gameState.collectedItems.weights;
+            document.getElementById('itemCount').textContent = `Items: ${totalItems}/12`;
+            document.getElementById('pillowCount').textContent = `${gameState.collectedItems.pillows}/9`;
+            document.getElementById('cupCount').textContent = `${gameState.collectedItems.cup}/1`;
+            document.getElementById('weightCount').textContent = `${gameState.collectedItems.weights}/2`;
+
+            // Draw messages
+            const messageEl = document.getElementById('message');
+            if (gameState.won) {
+                const finalTime = `${minutes}:${secs.toString().padStart(2, '0')}`;
+                messageEl.innerHTML = `🎉 YOU WIN! 🎉<br>Time: ${finalTime}<br><br>Press SPACE to play again`;
+            } else if (gameState.lost) {
+                messageEl.innerHTML = `💀 GAME OVER 💀<br>A monster got you!<br><br>Press SPACE to try again`;
+            } else if (totalItems === 12) {
+                messageEl.innerHTML = `All items collected!<br>Return to your BED! 🛏️`;
+            } else {
+                messageEl.textContent = '';
+            }
+        }
+
+        function drawPillow(x, y) {
+            const width = 36;
+            const height = 24;
+
+            // Pillow glow
+            ctx.shadowColor = '#FFFFFF';
+            ctx.shadowBlur = 12;
+
+            // Main pillow body (white/cream)
+            ctx.fillStyle = '#F8F8FF';
+            ctx.beginPath();
+            ctx.roundRect(x - width/2, y - height/2, width, height, 8);
+            ctx.fill();
+
+            // Pillow shading
+            const gradient = ctx.createLinearGradient(x - width/2, y - height/2, x - width/2, y + height/2);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(240, 240, 250, 0.5)');
+            gradient.addColorStop(1, 'rgba(200, 200, 220, 0.6)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(x - width/2, y - height/2, width, height, 8);
+            ctx.fill();
+
+            // Pillow outline
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#CCCCDD';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Pillow puffiness lines
+            ctx.strokeStyle = 'rgba(180, 180, 200, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x - width/4, y - height/2 + 4);
+            ctx.quadraticCurveTo(x - width/4, y, x - width/4, y + height/2 - 4);
+            ctx.moveTo(x + width/4, y - height/2 + 4);
+            ctx.quadraticCurveTo(x + width/4, y, x + width/4, y + height/2 - 4);
+            ctx.stroke();
+        }
+
+        function drawStanleyCup(x, y) {
+            // Stanley Quencher style tumbler
+            const cupHeight = 42;
+            const topWidth = 24;
+            const bottomWidth = 14;
+
+            // Cup glow
+            ctx.shadowColor = '#5CBCB8';
+            ctx.shadowBlur = 15;
+
+            // Cup body (teal like Stanley Quencher)
+            const bodyGradient = ctx.createLinearGradient(x - topWidth/2, y, x + topWidth/2, y);
+            bodyGradient.addColorStop(0, '#3A9E9E');
+            bodyGradient.addColorStop(0.2, '#5CBCB8');
+            bodyGradient.addColorStop(0.5, '#6DC9C5');
+            bodyGradient.addColorStop(0.8, '#5CBCB8');
+            bodyGradient.addColorStop(1, '#3A9E9E');
+
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.moveTo(x - topWidth/2, y - cupHeight/2 + 12); // Top left of body
+            ctx.lineTo(x + topWidth/2, y - cupHeight/2 + 12); // Top right of body
+            ctx.lineTo(x + bottomWidth/2, y + cupHeight/2); // Bottom right
+            ctx.lineTo(x - bottomWidth/2, y + cupHeight/2); // Bottom left
+            ctx.closePath();
+            ctx.fill();
+
+            // Wide lid (characteristic Stanley lid)
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#4AADAD';
+            ctx.beginPath();
+            ctx.roundRect(x - topWidth/2 - 3, y - cupHeight/2 + 4, topWidth + 6, 10, 4);
+            ctx.fill();
+
+            // Lid top rim
+            ctx.fillStyle = '#3D9494';
+            ctx.beginPath();
+            ctx.roundRect(x - topWidth/2 - 1, y - cupHeight/2, topWidth + 2, 6, 3);
+            ctx.fill();
+
+            // Straw
+            ctx.fillStyle = '#5CBCB8';
+            ctx.fillRect(x + 4, y - cupHeight/2 - 12, 4, 14);
+
+            // Straw top
+            ctx.beginPath();
+            ctx.arc(x + 6, y - cupHeight/2 - 12, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Handle (curved like Stanley)
+            ctx.strokeStyle = '#4AADAD';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x + topWidth/2 + 1, y - cupHeight/2 + 14);
+            ctx.quadraticCurveTo(x + topWidth/2 + 14, y - 2, x + topWidth/2 + 1, y + 8);
+            ctx.stroke();
+
+            // Handle inner edge
+            ctx.strokeStyle = '#6DC9C5';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + topWidth/2 + 2, y - cupHeight/2 + 16);
+            ctx.quadraticCurveTo(x + topWidth/2 + 10, y - 2, x + topWidth/2 + 2, y + 6);
+            ctx.stroke();
+
+            // Body highlight
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - 6, y - cupHeight/2 + 14);
+            ctx.lineTo(x - 4, y + cupHeight/2 - 5);
+            ctx.stroke();
+        }
+
+        function drawDumbbell(x, y, color) {
+            // Neoprene hex dumbbell
+            const handleWidth = 24;
+            const handleHeight = 8;
+            const hexWidth = 14;
+            const hexHeight = 18;
+
+            // Dumbbell glow
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 12;
+
+            // Darken color for shading
+            const darkColor = color === '#2563EB' ? '#1D4ED8' : '#EA580C';
+            const lightColor = color === '#2563EB' ? '#3B82F6' : '#FB923C';
+
+            // Left hex weight
+            ctx.fillStyle = color;
+            drawHexagon(x - handleWidth/2 - hexWidth/2 + 2, y, hexWidth, hexHeight);
+
+            // Right hex weight
+            drawHexagon(x + handleWidth/2 + hexWidth/2 - 2, y, hexWidth, hexHeight);
+
+            // Handle (same color, slightly darker)
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = darkColor;
+            ctx.beginPath();
+            ctx.roundRect(x - handleWidth/2, y - handleHeight/2, handleWidth, handleHeight, 3);
+            ctx.fill();
+
+            // Handle highlight
+            ctx.fillStyle = lightColor;
+            ctx.beginPath();
+            ctx.roundRect(x - handleWidth/2 + 2, y - handleHeight/2 + 1, handleWidth - 4, 3, 2);
+            ctx.fill();
+
+            // Weight number on left hex
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = 'bold 8px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('20', x - handleWidth/2 - hexWidth/2 + 2, y);
+        }
+
+        function drawHexagon(cx, cy, width, height) {
+            ctx.beginPath();
+            // Hex shape rotated for dumbbell orientation
+            const hw = width / 2;
+            const hh = height / 2;
+            ctx.moveTo(cx, cy - hh); // Top
+            ctx.lineTo(cx + hw, cy - hh * 0.5); // Top right
+            ctx.lineTo(cx + hw, cy + hh * 0.5); // Bottom right
+            ctx.lineTo(cx, cy + hh); // Bottom
+            ctx.lineTo(cx - hw, cy + hh * 0.5); // Bottom left
+            ctx.lineTo(cx - hw, cy - hh * 0.5); // Top left
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawMonster(monster) {
+            const x = monster.x;
+            const y = monster.y;
+            const type = monster.type;
+            const size = MONSTER_SIZE;
+
+            ctx.save();
+
+            // Monster glow
+            ctx.shadowColor = type.color;
+            ctx.shadowBlur = 25;
+
+            // Draw body based on type
+            ctx.fillStyle = type.color;
+
+            if (type.body === 'blob') {
+                // Blob body with wavy edges
+                ctx.beginPath();
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * Math.PI * 2;
+                    const wobble = Math.sin(Date.now() / 200 + i) * 5;
+                    const r = size/2 + wobble;
+                    const px = x + Math.cos(angle) * r;
+                    const py = y + Math.sin(angle) * r;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+            } else if (type.body === 'spiky') {
+                // Spiky monster
+                ctx.beginPath();
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const r1 = size/2;
+                    const r2 = size/3;
+                    ctx.lineTo(x + Math.cos(angle) * r1, y + Math.sin(angle) * r1);
+                    ctx.lineTo(x + Math.cos(angle + Math.PI/8) * r2, y + Math.sin(angle + Math.PI/8) * r2);
+                }
+                ctx.closePath();
+                ctx.fill();
+            } else if (type.body === 'round') {
+                // Round with feet
+                ctx.beginPath();
+                ctx.arc(x, y - 5, size/2, 0, Math.PI * 2);
+                ctx.fill();
+                // Feet
+                ctx.beginPath();
+                ctx.ellipse(x - 12, y + size/2 - 8, 10, 8, 0, 0, Math.PI * 2);
+                ctx.ellipse(x + 12, y + size/2 - 8, 10, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (type.body === 'square') {
+                // Rounded square
+                const s = size * 0.8;
+                ctx.beginPath();
+                ctx.roundRect(x - s/2, y - s/2, s, s, 10);
+                ctx.fill();
+            } else if (type.body === 'tall') {
+                // Tall ghost-like
+                ctx.beginPath();
+                ctx.arc(x, y - 10, size/2.5, Math.PI, 0);
+                ctx.lineTo(x + size/2.5, y + size/3);
+                // Wavy bottom
+                for (let i = 0; i < 4; i++) {
+                    const wx = x + size/2.5 - (i + 1) * (size/5);
+                    const wy = y + size/3 + (i % 2 === 0 ? 10 : 0);
+                    ctx.lineTo(wx, wy);
+                }
+                ctx.lineTo(x - size/2.5, y + size/3);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Draw eyes
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.ellipse(x - 10, y - 5, 8, 10, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + 10, y - 5, 8, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupils (look toward player)
+            const dx = gameState.player.x - x;
+            const dy = gameState.player.y - y;
+            const angle = Math.atan2(dy, dx);
+            const pupilOffset = 3;
+
+            ctx.fillStyle = type.eyeColor;
+            ctx.beginPath();
+            ctx.arc(x - 10 + Math.cos(angle) * pupilOffset, y - 5 + Math.sin(angle) * pupilOffset, 4, 0, Math.PI * 2);
+            ctx.arc(x + 10 + Math.cos(angle) * pupilOffset, y - 5 + Math.sin(angle) * pupilOffset, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Mouth
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y + 10, 8, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            updateGame();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Input handling
+        document.addEventListener('keydown', (e) => {
+            gameState.keys[e.code] = true;
+
+            if (e.code === 'Space' && (gameState.won || gameState.lost)) {
+                document.getElementById('startScreen').style.display = 'flex';
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            gameState.keys[e.code] = false;
+        });
+
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>

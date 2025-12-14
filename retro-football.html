@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Football</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5016 50%, #1a472a 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #gameCanvas {
+            border: 4px solid #fff;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+        #scoreboard {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            background: #222;
+            padding: 10px 30px;
+            border-radius: 10px;
+            border: 3px solid #ffd700;
+        }
+        .team-score {
+            text-align: center;
+            color: white;
+        }
+        .team-name {
+            font-size: 14px;
+            color: #aaa;
+        }
+        .score {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        #gameInfo {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+        #playType {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 15px;
+        }
+        .play-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .play-btn:hover {
+            transform: scale(1.05);
+        }
+        .play-btn:active {
+            transform: scale(0.95);
+        }
+        #passBtn {
+            background: linear-gradient(180deg, #4169E1, #2744a8);
+            color: white;
+        }
+        #runBtn {
+            background: linear-gradient(180deg, #228B22, #166016);
+            color: white;
+        }
+        #puntBtn {
+            background: linear-gradient(180deg, #FF8C00, #cc7000);
+            color: white;
+        }
+        #fgBtn {
+            background: linear-gradient(180deg, #FFD700, #ccac00);
+            color: #333;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 14px;
+            text-align: center;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 15px;
+            border-radius: 5px;
+        }
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 30;
+        }
+        #startScreen h1 {
+            font-size: 48px;
+            color: #ffd700;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 0 #8B4513;
+        }
+        #startScreen p {
+            font-size: 16px;
+            margin-bottom: 8px;
+            max-width: 400px;
+            text-align: center;
+        }
+        #startScreen button {
+            margin-top: 30px;
+            padding: 15px 50px;
+            font-size: 24px;
+            background: linear-gradient(180deg, #228B22, #166016);
+            color: white;
+            border: 3px solid #ffd700;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        #startScreen button:hover {
+            transform: scale(1.05);
+        }
+        #backButton {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 40;
+        }
+        #backButton:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 30;
+        }
+        #gameOverScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        #gameOverScreen .final-score {
+            font-size: 64px;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        #gameOverScreen button {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #228B22;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" id="backButton">Back to Arcade</a>
+    <div id="gameContainer">
+        <div id="scoreboard">
+            <div class="team-score">
+                <div class="team-name">YOU</div>
+                <div class="score" id="homeScore">0</div>
+            </div>
+            <div class="team-score">
+                <div class="team-name" id="quarterDisplay">Q1</div>
+                <div class="score" id="timeDisplay">15:00</div>
+            </div>
+            <div class="team-score">
+                <div class="team-name">CPU</div>
+                <div class="score" id="awayScore">0</div>
+            </div>
+        </div>
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        <div id="gameInfo">1st & 10 at OWN 25</div>
+        <div id="playType">
+            <button class="play-btn" id="passBtn">PASS</button>
+            <button class="play-btn" id="runBtn">RUN</button>
+            <button class="play-btn" id="puntBtn">PUNT</button>
+            <button class="play-btn" id="fgBtn">FG</button>
+        </div>
+        <div id="instructions">Click receiver to pass | Arrow keys to move | SPACE to sprint</div>
+
+        <div id="startScreen">
+            <h1>RETRO FOOTBALL</h1>
+            <p>Build your dream team and dominate!</p>
+            <button onclick="showTeamBuilder()">BUILD YOUR TEAM</button>
+        </div>
+
+        <div id="teamBuilder" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:35; overflow-y:auto; padding:20px;">
+            <h2 style="color:#FFD700; text-align:center; margin-bottom:20px;">BUILD YOUR ROSTER</h2>
+
+            <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center;">
+                <!-- QB Selection -->
+                <div style="background:#222; padding:15px; border-radius:10px; width:220px;">
+                    <h3 style="color:#FFD700; margin-bottom:10px;">QUARTERBACK</h3>
+                    <select id="selectQB" style="width:100%; padding:8px; font-size:14px; border-radius:5px;">
+                    </select>
+                    <div id="qbStats" style="color:#aaa; font-size:12px; margin-top:8px;"></div>
+                </div>
+
+                <!-- WR1 Selection -->
+                <div style="background:#222; padding:15px; border-radius:10px; width:220px;">
+                    <h3 style="color:#4169E1; margin-bottom:10px;">WIDE RECEIVER 1</h3>
+                    <select id="selectWR1" style="width:100%; padding:8px; font-size:14px; border-radius:5px;">
+                    </select>
+                    <div id="wr1Stats" style="color:#aaa; font-size:12px; margin-top:8px;"></div>
+                </div>
+
+                <!-- WR2 Selection -->
+                <div style="background:#222; padding:15px; border-radius:10px; width:220px;">
+                    <h3 style="color:#4169E1; margin-bottom:10px;">WIDE RECEIVER 2</h3>
+                    <select id="selectWR2" style="width:100%; padding:8px; font-size:14px; border-radius:5px;">
+                    </select>
+                    <div id="wr2Stats" style="color:#aaa; font-size:12px; margin-top:8px;"></div>
+                </div>
+
+                <!-- RB Selection -->
+                <div style="background:#222; padding:15px; border-radius:10px; width:220px;">
+                    <h3 style="color:#32CD32; margin-bottom:10px;">RUNNING BACK</h3>
+                    <select id="selectRB" style="width:100%; padding:8px; font-size:14px; border-radius:5px;">
+                    </select>
+                    <div id="rbStats" style="color:#aaa; font-size:12px; margin-top:8px;"></div>
+                </div>
+
+                <!-- TE Selection -->
+                <div style="background:#222; padding:15px; border-radius:10px; width:220px;">
+                    <h3 style="color:#FF6347; margin-bottom:10px;">TIGHT END</h3>
+                    <select id="selectTE" style="width:100%; padding:8px; font-size:14px; border-radius:5px;">
+                    </select>
+                    <div id="teStats" style="color:#aaa; font-size:12px; margin-top:8px;"></div>
+                </div>
+            </div>
+
+            <div style="text-align:center; margin-top:30px;">
+                <p style="color:white; margin-bottom:15px;"><strong>CONTROLS:</strong> Click receiver to pass | Arrow keys to move | SPACE to sprint</p>
+                <button onclick="confirmTeam()" style="padding:15px 50px; font-size:20px; background:linear-gradient(180deg, #228B22, #166016); color:white; border:3px solid #ffd700; border-radius:10px; cursor:pointer;">START GAME</button>
+            </div>
+        </div>
+
+        <div id="gameOverScreen">
+            <h1 id="gameOverTitle">GAME OVER</h1>
+            <div class="final-score" id="finalScore">0 - 0</div>
+            <button onclick="location.reload()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // NFL Player Database
+        const NFL_PLAYERS = {
+            QB: [
+                { name: 'Patrick Mahomes', team: 'KC', number: 15, speed: 4.5, arm: 99, color: '#E31837' },
+                { name: 'Josh Allen', team: 'BUF', number: 17, speed: 5, arm: 96, color: '#00338D' },
+                { name: 'Joe Burrow', team: 'CIN', number: 9, speed: 4, arm: 94, color: '#FB4F14' },
+                { name: 'Lamar Jackson', team: 'BAL', number: 8, speed: 6, arm: 88, color: '#241773' },
+                { name: 'Jalen Hurts', team: 'PHI', number: 1, speed: 5.5, arm: 90, color: '#004C54' },
+                { name: 'Justin Herbert', team: 'LAC', number: 10, speed: 4, arm: 97, color: '#0080C6' },
+                { name: 'Tua Tagovailoa', team: 'MIA', number: 1, speed: 4, arm: 92, color: '#008E97' },
+                { name: 'Dak Prescott', team: 'DAL', number: 4, speed: 4, arm: 91, color: '#003594' },
+                { name: 'Trevor Lawrence', team: 'JAX', number: 16, speed: 4.5, arm: 93, color: '#006778' },
+                { name: 'Jordan Love', team: 'GB', number: 10, speed: 4.5, arm: 92, color: '#203731' },
+                { name: 'CJ Stroud', team: 'HOU', number: 7, speed: 4, arm: 94, color: '#03202F' },
+                { name: 'Brock Purdy', team: 'SF', number: 13, speed: 4, arm: 89, color: '#AA0000' },
+                { name: 'Anthony Richardson', team: 'IND', number: 5, speed: 6, arm: 95, color: '#002C5F' },
+                { name: 'Kyler Murray', team: 'ARI', number: 1, speed: 5.5, arm: 90, color: '#97233F' },
+                { name: 'Caleb Williams', team: 'CHI', number: 18, speed: 4.5, arm: 93, color: '#0B162A' }
+            ],
+            WR: [
+                { name: 'Tyreek Hill', team: 'MIA', number: 10, speed: 6.5, catch: 94, color: '#008E97' },
+                { name: 'Justin Jefferson', team: 'MIN', number: 18, speed: 6, catch: 98, color: '#4F2683' },
+                { name: 'Ja\'Marr Chase', team: 'CIN', number: 1, speed: 6, catch: 96, color: '#FB4F14' },
+                { name: 'CeeDee Lamb', team: 'DAL', number: 88, speed: 5.5, catch: 95, color: '#003594' },
+                { name: 'A.J. Brown', team: 'PHI', number: 11, speed: 5.5, catch: 93, color: '#004C54' },
+                { name: 'Davante Adams', team: 'NYJ', number: 17, speed: 5, catch: 97, color: '#125740' },
+                { name: 'Stefon Diggs', team: 'HOU', number: 1, speed: 5.5, catch: 94, color: '#03202F' },
+                { name: 'Amon-Ra St. Brown', team: 'DET', number: 14, speed: 5.5, catch: 93, color: '#0076B6' },
+                { name: 'DK Metcalf', team: 'SEA', number: 14, speed: 6, catch: 89, color: '#002244' },
+                { name: 'Deebo Samuel', team: 'SF', number: 19, speed: 5.5, catch: 90, color: '#AA0000' },
+                { name: 'Mike Evans', team: 'TB', number: 13, speed: 5, catch: 94, color: '#D50A0A' },
+                { name: 'Chris Olave', team: 'NO', number: 12, speed: 6, catch: 91, color: '#D3BC8D' },
+                { name: 'Garrett Wilson', team: 'NYJ', number: 17, speed: 5.5, catch: 92, color: '#125740' },
+                { name: 'Nico Collins', team: 'HOU', number: 12, speed: 5.5, catch: 91, color: '#03202F' },
+                { name: 'Brandon Aiyuk', team: 'SF', number: 11, speed: 5.5, catch: 92, color: '#AA0000' },
+                { name: 'Puka Nacua', team: 'LAR', number: 17, speed: 5.5, catch: 93, color: '#003594' },
+                { name: 'Drake London', team: 'ATL', number: 5, speed: 5, catch: 91, color: '#A71930' },
+                { name: 'Jaylen Waddle', team: 'MIA', number: 17, speed: 6, catch: 90, color: '#008E97' },
+                { name: 'DeVonta Smith', team: 'PHI', number: 6, speed: 5.5, catch: 93, color: '#004C54' },
+                { name: 'Marvin Harrison Jr.', team: 'ARI', number: 18, speed: 5.5, catch: 94, color: '#97233F' }
+            ],
+            RB: [
+                { name: 'Christian McCaffrey', team: 'SF', number: 23, speed: 5.5, power: 88, color: '#AA0000' },
+                { name: 'Derrick Henry', team: 'BAL', number: 22, speed: 5.5, power: 99, color: '#241773' },
+                { name: 'Saquon Barkley', team: 'PHI', number: 26, speed: 6, power: 90, color: '#004C54' },
+                { name: 'Jonathan Taylor', team: 'IND', number: 28, speed: 6, power: 85, color: '#002C5F' },
+                { name: 'Nick Chubb', team: 'CLE', number: 24, speed: 5, power: 95, color: '#311D00' },
+                { name: 'Josh Jacobs', team: 'GB', number: 28, speed: 5.5, power: 90, color: '#203731' },
+                { name: 'Breece Hall', team: 'NYJ', number: 20, speed: 5.5, power: 85, color: '#125740' },
+                { name: 'Travis Etienne', team: 'JAX', number: 1, speed: 6, power: 80, color: '#006778' },
+                { name: 'Bijan Robinson', team: 'ATL', number: 7, speed: 6, power: 85, color: '#A71930' },
+                { name: 'Jahmyr Gibbs', team: 'DET', number: 26, speed: 6, power: 78, color: '#0076B6' },
+                { name: 'Kyren Williams', team: 'LAR', number: 23, speed: 5.5, power: 85, color: '#003594' },
+                { name: 'Rachaad White', team: 'TB', number: 1, speed: 5.5, power: 82, color: '#D50A0A' },
+                { name: 'De\'Von Achane', team: 'MIA', number: 28, speed: 6.5, power: 70, color: '#008E97' },
+                { name: 'Kenneth Walker III', team: 'SEA', number: 9, speed: 5.5, power: 88, color: '#002244' },
+                { name: 'Alvin Kamara', team: 'NO', number: 41, speed: 5.5, power: 82, color: '#D3BC8D' }
+            ],
+            TE: [
+                { name: 'Travis Kelce', team: 'KC', number: 87, speed: 4.5, catch: 96, color: '#E31837' },
+                { name: 'George Kittle', team: 'SF', number: 85, speed: 5, catch: 92, color: '#AA0000' },
+                { name: 'Mark Andrews', team: 'BAL', number: 89, speed: 4.5, catch: 93, color: '#241773' },
+                { name: 'T.J. Hockenson', team: 'MIN', number: 87, speed: 4.5, catch: 91, color: '#4F2683' },
+                { name: 'Dallas Goedert', team: 'PHI', number: 88, speed: 4.5, catch: 89, color: '#004C54' },
+                { name: 'Evan Engram', team: 'JAX', number: 17, speed: 5, catch: 88, color: '#006778' },
+                { name: 'Sam LaPorta', team: 'DET', number: 87, speed: 5, catch: 90, color: '#0076B6' },
+                { name: 'Kyle Pitts', team: 'ATL', number: 8, speed: 5, catch: 89, color: '#A71930' },
+                { name: 'David Njoku', team: 'CLE', number: 85, speed: 5, catch: 87, color: '#311D00' },
+                { name: 'Pat Freiermuth', team: 'PIT', number: 88, speed: 4.5, catch: 86, color: '#FFB612' },
+                { name: 'Dalton Kincaid', team: 'BUF', number: 86, speed: 5, catch: 89, color: '#00338D' },
+                { name: 'Jake Ferguson', team: 'DAL', number: 87, speed: 4.5, catch: 87, color: '#003594' }
+            ]
+        };
+
+        // Selected team
+        const myTeam = {
+            qb: null,
+            wr1: null,
+            wr2: null,
+            rb: null,
+            te: null
+        };
+
+        function showTeamBuilder() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('teamBuilder').style.display = 'block';
+            populateSelects();
+        }
+
+        function populateSelects() {
+            // Populate QB
+            const qbSelect = document.getElementById('selectQB');
+            qbSelect.innerHTML = NFL_PLAYERS.QB.map((p, i) =>
+                `<option value="${i}">${p.name} (${p.team})</option>`
+            ).join('');
+            qbSelect.onchange = () => updateStats('qb');
+            updateStats('qb');
+
+            // Populate WR1
+            const wr1Select = document.getElementById('selectWR1');
+            wr1Select.innerHTML = NFL_PLAYERS.WR.map((p, i) =>
+                `<option value="${i}">${p.name} (${p.team})</option>`
+            ).join('');
+            wr1Select.onchange = () => updateStats('wr1');
+            updateStats('wr1');
+
+            // Populate WR2
+            const wr2Select = document.getElementById('selectWR2');
+            wr2Select.innerHTML = NFL_PLAYERS.WR.map((p, i) =>
+                `<option value="${i}" ${i === 1 ? 'selected' : ''}>${p.name} (${p.team})</option>`
+            ).join('');
+            wr2Select.selectedIndex = 1;
+            wr2Select.onchange = () => updateStats('wr2');
+            updateStats('wr2');
+
+            // Populate RB
+            const rbSelect = document.getElementById('selectRB');
+            rbSelect.innerHTML = NFL_PLAYERS.RB.map((p, i) =>
+                `<option value="${i}">${p.name} (${p.team})</option>`
+            ).join('');
+            rbSelect.onchange = () => updateStats('rb');
+            updateStats('rb');
+
+            // Populate TE
+            const teSelect = document.getElementById('selectTE');
+            teSelect.innerHTML = NFL_PLAYERS.TE.map((p, i) =>
+                `<option value="${i}">${p.name} (${p.team})</option>`
+            ).join('');
+            teSelect.onchange = () => updateStats('te');
+            updateStats('te');
+        }
+
+        function updateStats(pos) {
+            const selectId = pos === 'qb' ? 'selectQB' : pos === 'wr1' ? 'selectWR1' : pos === 'wr2' ? 'selectWR2' : pos === 'rb' ? 'selectRB' : 'selectTE';
+            const statsId = pos + 'Stats';
+            const playerList = pos === 'qb' ? NFL_PLAYERS.QB : (pos === 'wr1' || pos === 'wr2') ? NFL_PLAYERS.WR : pos === 'rb' ? NFL_PLAYERS.RB : NFL_PLAYERS.TE;
+
+            const select = document.getElementById(selectId);
+            const player = playerList[select.value];
+
+            let statsHtml = `#${player.number} | SPD: ${player.speed}`;
+            if (player.arm) statsHtml += ` | ARM: ${player.arm}`;
+            if (player.catch) statsHtml += ` | CTH: ${player.catch}`;
+            if (player.power) statsHtml += ` | PWR: ${player.power}`;
+
+            document.getElementById(statsId).innerHTML = statsHtml;
+        }
+
+        function confirmTeam() {
+            myTeam.qb = NFL_PLAYERS.QB[document.getElementById('selectQB').value];
+            myTeam.wr1 = NFL_PLAYERS.WR[document.getElementById('selectWR1').value];
+            myTeam.wr2 = NFL_PLAYERS.WR[document.getElementById('selectWR2').value];
+            myTeam.rb = NFL_PLAYERS.RB[document.getElementById('selectRB').value];
+            myTeam.te = NFL_PLAYERS.TE[document.getElementById('selectTE').value];
+
+            document.getElementById('teamBuilder').style.display = 'none';
+            startGame();
+        }
+
+        // Constants
+        const FIELD_LENGTH = 100; // yards
+        const PLAYER_RADIUS = 12;
+        const BALL_RADIUS = 5;
+        const YARDS_PER_PIXEL = FIELD_LENGTH / canvas.width;
+
+        // Game state
+        const game = {
+            phase: 'start', // start, selectPlay, playing, dead, gameOver
+            homeScore: 0,
+            awayScore: 0,
+            quarter: 1,
+            timeRemaining: 900, // 15 minutes per quarter (in tenths of seconds)
+            possession: 'home',
+            down: 1,
+            yardsToGo: 10,
+            ballOn: 25, // yard line (0-100, 0 is own endzone, 100 is opponent endzone)
+            lineOfScrimmage: 25,
+            firstDownLine: 35,
+            playType: null, // 'pass', 'run', 'punt', 'fg'
+            playActive: false,
+            passThrown: false,
+            ballCaught: false,
+            playStartTime: 0,
+            players: [],
+            ball: { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, holder: null },
+            keys: {},
+            selectedReceiver: null,
+            mouseX: 0,
+            mouseY: 0
+        };
+
+        // Player positions
+        function createPlayers() {
+            game.players = [];
+            const losX = yardToX(game.lineOfScrimmage);
+            const midY = canvas.height / 2;
+
+            // Use selected NFL players or defaults
+            const qbData = myTeam.qb || { name: 'QB', number: 12, speed: 4, color: '#FFD700' };
+            const wr1Data = myTeam.wr1 || { name: 'WR1', number: 88, speed: 5.5, color: '#4169E1' };
+            const wr2Data = myTeam.wr2 || { name: 'WR2', number: 81, speed: 5.5, color: '#4169E1' };
+            const rbData = myTeam.rb || { name: 'RB', number: 28, speed: 5, color: '#32CD32' };
+            const teData = myTeam.te || { name: 'TE', number: 87, speed: 4.5, color: '#FF6347' };
+
+            // Offensive players (home team)
+            game.players.push({
+                id: 'qb',
+                team: 'home',
+                role: 'QB',
+                x: losX - 50,
+                y: midY,
+                targetX: losX - 50,
+                targetY: midY,
+                speed: qbData.speed,
+                color: qbData.color,
+                hasBall: true,
+                nflName: qbData.name,
+                number: qbData.number
+            });
+
+            // Wide Receivers
+            // WR1 - runs a GO route (straight up the sideline)
+            game.players.push({
+                id: 'wr1',
+                team: 'home',
+                role: 'WR',
+                x: losX - 30,
+                y: midY - 150,
+                startX: losX - 30,
+                startY: midY - 150,
+                speed: wr1Data.speed,
+                color: wr1Data.color,
+                route: 'go',
+                routeWaypoints: [
+                    { x: losX + 50, y: midY - 150 },   // Run straight
+                    { x: losX + 150, y: midY - 150 },  // Keep going deep
+                    { x: losX + 250, y: midY - 140 }   // Slight inside
+                ],
+                waypointIndex: 0,
+                nflName: wr1Data.name,
+                number: wr1Data.number
+            });
+
+            // WR2 - runs an OUT route (go forward then cut outside)
+            game.players.push({
+                id: 'wr2',
+                team: 'home',
+                role: 'WR',
+                x: losX - 30,
+                y: midY + 150,
+                startX: losX - 30,
+                startY: midY + 150,
+                speed: wr2Data.speed,
+                color: wr2Data.color,
+                route: 'out',
+                routeWaypoints: [
+                    { x: losX + 60, y: midY + 150 },   // Run forward
+                    { x: losX + 80, y: midY + 200 },   // Cut outside
+                    { x: losX + 100, y: midY + 210 }   // Settle
+                ],
+                waypointIndex: 0,
+                nflName: wr2Data.name,
+                number: wr2Data.number
+            });
+
+            // Running Back - runs a SWING route (out to the flat)
+            game.players.push({
+                id: 'rb',
+                team: 'home',
+                role: 'RB',
+                x: losX - 70,
+                y: midY + 30,
+                startX: losX - 70,
+                startY: midY + 30,
+                speed: rbData.speed,
+                color: rbData.color,
+                route: 'swing',
+                routeWaypoints: [
+                    { x: losX - 40, y: midY + 100 },   // Swing out
+                    { x: losX + 30, y: midY + 140 },   // Turn upfield
+                    { x: losX + 80, y: midY + 130 }    // Continue
+                ],
+                waypointIndex: 0,
+                nflName: rbData.name,
+                number: rbData.number
+            });
+
+            // Tight End - runs a SLANT route (quick inside)
+            game.players.push({
+                id: 'te',
+                team: 'home',
+                role: 'TE',
+                x: losX - 20,
+                y: midY - 50,
+                startX: losX - 20,
+                startY: midY - 50,
+                speed: teData.speed,
+                color: teData.color,
+                route: 'slant',
+                routeWaypoints: [
+                    { x: losX + 30, y: midY - 30 },    // Quick slant inside
+                    { x: losX + 70, y: midY },         // Continue across
+                    { x: losX + 120, y: midY + 20 }    // Settle in zone
+                ],
+                waypointIndex: 0,
+                nflName: teData.name,
+                number: teData.number
+            });
+
+            // Offensive Line (blockers)
+            for (let i = 0; i < 5; i++) {
+                game.players.push({
+                    id: 'ol' + i,
+                    team: 'home',
+                    role: 'OL',
+                    x: losX - 15,
+                    y: midY - 40 + i * 20,
+                    targetX: losX - 15,
+                    targetY: midY - 40 + i * 20,
+                    speed: 2,
+                    color: '#808080'
+                });
+            }
+
+            // Defensive players (away team)
+            // Defensive Line
+            for (let i = 0; i < 4; i++) {
+                game.players.push({
+                    id: 'dl' + i,
+                    team: 'away',
+                    role: 'DL',
+                    x: losX + 15,
+                    y: midY - 45 + i * 30,
+                    speed: 3.5,
+                    color: '#DC143C'
+                });
+            }
+
+            // Linebackers
+            game.players.push({
+                id: 'lb1',
+                team: 'away',
+                role: 'LB',
+                x: losX + 60,
+                y: midY - 50,
+                speed: 4.5,
+                color: '#B22222'
+            });
+            game.players.push({
+                id: 'lb2',
+                team: 'away',
+                role: 'LB',
+                x: losX + 60,
+                y: midY + 50,
+                speed: 4.5,
+                color: '#B22222'
+            });
+
+            // Cornerbacks
+            game.players.push({
+                id: 'cb1',
+                team: 'away',
+                role: 'CB',
+                x: losX + 30,
+                y: midY - 140,
+                speed: 5.5,
+                color: '#8B0000',
+                covering: 'wr1'
+            });
+            game.players.push({
+                id: 'cb2',
+                team: 'away',
+                role: 'CB',
+                x: losX + 30,
+                y: midY + 140,
+                speed: 5.5,
+                color: '#8B0000',
+                covering: 'wr2'
+            });
+
+            // Safety
+            game.players.push({
+                id: 'fs',
+                team: 'away',
+                role: 'FS',
+                x: losX + 120,
+                y: midY,
+                speed: 5,
+                color: '#800000'
+            });
+
+            // Set ball holder
+            const qb = game.players.find(p => p.id === 'qb');
+            game.ball.holder = qb;
+            game.ball.x = qb.x;
+            game.ball.y = qb.y;
+        }
+
+        function yardToX(yard) {
+            // Convert yard line to canvas X position
+            // Own endzone is left, opponent endzone is right
+            return (yard / FIELD_LENGTH) * canvas.width;
+        }
+
+        function xToYard(x) {
+            return (x / canvas.width) * FIELD_LENGTH;
+        }
+
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            game.phase = 'selectPlay';
+            document.getElementById('playType').style.display = 'flex';
+            createPlayers();
+            gameLoop();
+        }
+
+        function selectPlay(type) {
+            game.playType = type;
+            game.phase = 'playing';
+            game.playActive = true;
+            game.passThrown = false;
+            game.ballCaught = false;
+            game.playStartTime = Date.now();
+            document.getElementById('playType').style.display = 'none';
+
+            if (type === 'punt') {
+                executePunt();
+            } else if (type === 'fg') {
+                executeFieldGoal();
+            }
+        }
+
+        function executePunt() {
+            const puntYards = 35 + Math.random() * 15;
+            game.ballOn = Math.min(95, game.ballOn + puntYards);
+            // Turnover
+            game.possession = 'away';
+            cpuDrive();
+        }
+
+        function executeFieldGoal() {
+            const distance = 100 - game.ballOn + 17; // 17 yards for endzone + snap
+            const successChance = Math.max(0.1, 1 - (distance - 20) * 0.02);
+
+            if (Math.random() < successChance) {
+                game.homeScore += 3;
+                showMessage('FIELD GOAL!', '#FFD700');
+            } else {
+                showMessage('MISSED!', '#FF4444');
+            }
+
+            // Opponent gets ball
+            game.possession = 'away';
+            setTimeout(() => cpuDrive(), 1500);
+        }
+
+        function cpuDrive() {
+            // Simulate CPU possession
+            const plays = 3 + Math.floor(Math.random() * 5);
+            let yards = 0;
+
+            for (let i = 0; i < plays; i++) {
+                yards += Math.floor(Math.random() * 12) - 2;
+            }
+
+            if (yards > 60 && Math.random() > 0.4) {
+                // CPU scores TD
+                game.awayScore += 7;
+                showMessage('CPU TOUCHDOWN!', '#DC143C');
+                game.ballOn = 25;
+            } else if (yards > 40 && Math.random() > 0.5) {
+                // CPU FG
+                game.awayScore += 3;
+                showMessage('CPU FIELD GOAL', '#DC143C');
+                game.ballOn = 25;
+            } else {
+                // Punt back
+                game.ballOn = Math.max(5, 100 - (game.ballOn + yards + 40));
+            }
+
+            game.possession = 'home';
+            game.down = 1;
+            game.yardsToGo = 10;
+            game.lineOfScrimmage = game.ballOn;
+            game.firstDownLine = Math.min(100, game.ballOn + 10);
+
+            advanceTime(120 + Math.random() * 180); // 2-5 minutes
+
+            setTimeout(() => {
+                createPlayers();
+                game.phase = 'selectPlay';
+                document.getElementById('playType').style.display = 'flex';
+            }, 2000);
+        }
+
+        function showMessage(text, color) {
+            // Flash message on screen
+            game.message = { text, color, time: 60 };
+        }
+
+        function advanceTime(tenths) {
+            game.timeRemaining -= tenths;
+            if (game.timeRemaining <= 0) {
+                game.quarter++;
+                if (game.quarter > 4) {
+                    endGame();
+                } else {
+                    game.timeRemaining = 900;
+                }
+            }
+        }
+
+        function endGame() {
+            game.phase = 'gameOver';
+            const screen = document.getElementById('gameOverScreen');
+            screen.style.display = 'flex';
+            document.getElementById('finalScore').textContent = `${game.homeScore} - ${game.awayScore}`;
+            document.getElementById('gameOverTitle').textContent =
+                game.homeScore > game.awayScore ? 'YOU WIN!' :
+                game.homeScore < game.awayScore ? 'YOU LOSE' : 'TIE GAME';
+            document.getElementById('gameOverTitle').style.color =
+                game.homeScore > game.awayScore ? '#FFD700' : '#DC143C';
+        }
+
+        function update() {
+            if (game.phase !== 'playing') return;
+
+            // QB controls
+            const qb = game.players.find(p => p.id === 'qb');
+            if (qb && qb.hasBall && !game.passThrown) {
+                let dx = 0, dy = 0;
+                const speed = game.keys['Space'] ? qb.speed * 1.5 : qb.speed;
+
+                if (game.keys['ArrowLeft'] || game.keys['KeyA']) dx -= speed;
+                if (game.keys['ArrowRight'] || game.keys['KeyD']) dx += speed;
+                if (game.keys['ArrowUp'] || game.keys['KeyW']) dy -= speed;
+                if (game.keys['ArrowDown'] || game.keys['KeyS']) dy += speed;
+
+                qb.x += dx;
+                qb.y += dy;
+
+                // Bounds
+                qb.x = Math.max(30, Math.min(canvas.width - 30, qb.x));
+                qb.y = Math.max(30, Math.min(canvas.height - 30, qb.y));
+            }
+
+            // Ball carrier after catch
+            const carrier = game.players.find(p => p.hasBall && p.id !== 'qb');
+            if (carrier && game.ballCaught) {
+                let dx = 0, dy = 0;
+                const speed = game.keys['Space'] ? carrier.speed * 1.4 : carrier.speed;
+
+                if (game.keys['ArrowLeft'] || game.keys['KeyA']) dx -= speed;
+                if (game.keys['ArrowRight'] || game.keys['KeyD']) dx += speed;
+                if (game.keys['ArrowUp'] || game.keys['KeyW']) dy -= speed;
+                if (game.keys['ArrowDown'] || game.keys['KeyS']) dy += speed;
+
+                carrier.x += dx;
+                carrier.y += dy;
+                carrier.x = Math.max(30, Math.min(canvas.width - 30, carrier.x));
+                carrier.y = Math.max(30, Math.min(canvas.height - 30, carrier.y));
+            }
+
+            // Receiver routes - follow waypoints
+            if (game.playType === 'pass' && !game.passThrown) {
+                game.players.forEach(p => {
+                    if (p.team === 'home' && p.role !== 'QB' && p.role !== 'OL' && p.routeWaypoints) {
+                        // Speed multiplier - WRs run at normal speed
+                        const speedMult = (p.role === 'WR') ? 0.8 : 0.7;
+
+                        // Get current waypoint
+                        const waypoint = p.routeWaypoints[p.waypointIndex];
+                        if (!waypoint) {
+                            // No more waypoints - keep running forward
+                            p.x += p.speed * speedMult * 0.8;
+                            p.x = Math.max(30, Math.min(canvas.width - 30, p.x));
+                            p.y = Math.max(30, Math.min(canvas.height - 30, p.y));
+                            return;
+                        }
+
+                        const dx = waypoint.x - p.x;
+                        const dy = waypoint.y - p.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        // Move toward waypoint at faster speed
+                        if (dist > 10) {
+                            p.x += (dx / dist) * p.speed * speedMult;
+                            p.y += (dy / dist) * p.speed * speedMult;
+                        } else {
+                            // Reached waypoint, move to next
+                            if (p.waypointIndex < p.routeWaypoints.length - 1) {
+                                p.waypointIndex++;
+                            } else {
+                                // At last waypoint - keep running forward
+                                p.x += p.speed * speedMult * 0.8;
+                            }
+                        }
+
+                        // Keep in bounds
+                        p.x = Math.max(30, Math.min(canvas.width - 30, p.x));
+                        p.y = Math.max(30, Math.min(canvas.height - 30, p.y));
+                    }
+                });
+            }
+
+            // Also run routes during run plays (for play action)
+            if (game.playType === 'run' && !game.ballCaught) {
+                game.players.forEach(p => {
+                    if (p.team === 'home' && (p.role === 'WR' || p.role === 'TE') && p.routeWaypoints) {
+                        // Blockers run blocking routes
+                        const waypoint = p.routeWaypoints[0]; // Just go to first waypoint
+                        if (!waypoint) return;
+
+                        const dx = waypoint.x - p.x;
+                        const dy = waypoint.y - p.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist > 15) {
+                            p.x += (dx / dist) * p.speed * 0.5;
+                            p.y += (dy / dist) * p.speed * 0.5;
+                        }
+                    }
+                });
+            }
+
+            // Defensive AI - delay rush for ~2 seconds to give QB time
+            const timeSinceSnap = (Date.now() - game.playStartTime) / 1000;
+            const rushDelay = 2.0; // seconds before defense starts rushing hard
+            const rushMultiplier = Math.min(1, Math.max(0, (timeSinceSnap - rushDelay) / 3)); // ramps up over 3 seconds
+
+            game.players.forEach(def => {
+                if (def.team !== 'away') return;
+
+                let target;
+                if (def.covering) {
+                    target = game.players.find(p => p.id === def.covering);
+                } else if (game.ball.holder) {
+                    target = game.ball.holder;
+                } else {
+                    target = { x: game.ball.x, y: game.ball.y };
+                }
+
+                if (target) {
+                    const dx = target.x - def.x;
+                    const dy = target.y - def.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // Different behaviors - much slower rush
+                    let moveSpeed = def.speed * 0.3 * rushMultiplier;
+                    if (!game.ball.holder && !game.passThrown) {
+                        // Rush QB - but only after delay
+                        if ((def.role === 'DL' || def.role === 'LB') && timeSinceSnap > rushDelay) {
+                            const qbPlayer = game.players.find(p => p.id === 'qb');
+                            if (qbPlayer) {
+                                const qbDx = qbPlayer.x - def.x;
+                                const qbDy = qbPlayer.y - def.y;
+                                const qbDist = Math.sqrt(qbDx * qbDx + qbDy * qbDy);
+                                def.x += (qbDx / qbDist) * def.speed * 0.25 * rushMultiplier;
+                                def.y += (qbDy / qbDist) * def.speed * 0.25 * rushMultiplier;
+                            }
+                        }
+                    } else {
+                        if (dist > 10) {
+                            def.x += (dx / dist) * moveSpeed;
+                            def.y += (dy / dist) * moveSpeed;
+                        }
+                    }
+                }
+            });
+
+            // Ball physics (when thrown)
+            if (game.passThrown && !game.ball.holder) {
+                game.ball.x += game.ball.vx;
+                game.ball.y += game.ball.vy;
+                game.ball.z += game.ball.vz;
+                game.ball.vz -= 0.3; // gravity
+
+                // Check for catch
+                game.players.forEach(p => {
+                    if (p.team === 'home' && !p.hasBall && game.ball.z < 20) {
+                        const dx = p.x - game.ball.x;
+                        const dy = p.y - game.ball.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < 30) {
+                            // Catch attempt
+                            const catchChance = 0.7 + (p.role === 'WR' ? 0.15 : 0);
+
+                            // Check for defender nearby
+                            const nearbyDef = game.players.find(d =>
+                                d.team === 'away' &&
+                                Math.sqrt((d.x - p.x) ** 2 + (d.y - p.y) ** 2) < 25
+                            );
+                            const finalChance = nearbyDef ? catchChance * 0.5 : catchChance;
+
+                            if (Math.random() < finalChance) {
+                                // Caught!
+                                p.hasBall = true;
+                                game.ball.holder = p;
+                                game.ballCaught = true;
+                                game.ball.z = 0;
+                            } else {
+                                // Incomplete
+                                endPlay('incomplete');
+                            }
+                        }
+                    }
+                });
+
+                // Ball hit ground
+                if (game.ball.z < 0) {
+                    endPlay('incomplete');
+                }
+
+                // Out of bounds
+                if (game.ball.y < 0 || game.ball.y > canvas.height) {
+                    endPlay('incomplete');
+                }
+            }
+
+            // Tackle detection
+            if (game.ball.holder) {
+                game.players.forEach(def => {
+                    if (def.team === 'away') {
+                        const dx = game.ball.holder.x - def.x;
+                        const dy = game.ball.holder.y - def.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < 20) {
+                            const tackleYard = xToYard(game.ball.holder.x);
+                            endPlay('tackle', tackleYard);
+                        }
+                    }
+                });
+
+                // Touchdown check
+                if (game.ball.holder.x > canvas.width - 20) {
+                    endPlay('touchdown');
+                }
+
+                // Safety check
+                if (game.ball.holder.x < 20) {
+                    endPlay('safety');
+                }
+            }
+
+            // Update ball position with holder
+            if (game.ball.holder) {
+                game.ball.x = game.ball.holder.x;
+                game.ball.y = game.ball.holder.y;
+            }
+        }
+
+        function throwPass(targetPlayer) {
+            if (game.passThrown || !game.playActive) return;
+
+            const qb = game.players.find(p => p.id === 'qb');
+            if (!qb || !qb.hasBall) return;
+
+            qb.hasBall = false;
+            game.ball.holder = null;
+            game.passThrown = true;
+
+            const dx = targetPlayer.x - qb.x;
+            const dy = targetPlayer.y - qb.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = 12;
+
+            game.ball.vx = (dx / dist) * speed;
+            game.ball.vy = (dy / dist) * speed;
+            game.ball.vz = dist * 0.03; // arc height based on distance
+        }
+
+        function endPlay(result, tackleYard) {
+            game.playActive = false;
+
+            // Reset player ball status
+            game.players.forEach(p => p.hasBall = false);
+
+            let yardsGained = 0;
+
+            switch (result) {
+                case 'touchdown':
+                    game.homeScore += 7;
+                    showMessage('TOUCHDOWN!', '#FFD700');
+                    game.ballOn = 25;
+                    game.down = 1;
+                    game.yardsToGo = 10;
+                    advanceTime(50);
+                    // Opponent gets ball
+                    setTimeout(() => {
+                        game.possession = 'away';
+                        cpuDrive();
+                    }, 2000);
+                    return;
+
+                case 'safety':
+                    game.awayScore += 2;
+                    showMessage('SAFETY!', '#DC143C');
+                    game.ballOn = 20;
+                    game.down = 1;
+                    game.yardsToGo = 10;
+                    advanceTime(30);
+                    setTimeout(() => resetPlay(), 1500);
+                    return;
+
+                case 'incomplete':
+                    showMessage('INCOMPLETE', '#888');
+                    yardsGained = 0;
+                    break;
+
+                case 'tackle':
+                    yardsGained = tackleYard - game.lineOfScrimmage;
+                    break;
+            }
+
+            game.ballOn = Math.max(1, Math.min(99, game.lineOfScrimmage + yardsGained));
+            game.yardsToGo -= yardsGained;
+
+            if (game.yardsToGo <= 0) {
+                // First down!
+                showMessage('FIRST DOWN!', '#00FF00');
+                game.down = 1;
+                game.yardsToGo = 10;
+                game.firstDownLine = Math.min(100, game.ballOn + 10);
+            } else {
+                game.down++;
+                if (game.down > 4) {
+                    // Turnover on downs
+                    showMessage('TURNOVER ON DOWNS', '#DC143C');
+                    game.possession = 'away';
+                    setTimeout(() => cpuDrive(), 1500);
+                    return;
+                }
+            }
+
+            game.lineOfScrimmage = game.ballOn;
+            advanceTime(30 + Math.random() * 20);
+
+            setTimeout(() => resetPlay(), 1000);
+        }
+
+        function resetPlay() {
+            createPlayers();
+            game.phase = 'selectPlay';
+            game.passThrown = false;
+            game.ballCaught = false;
+            document.getElementById('playType').style.display = 'flex';
+        }
+
+        function draw() {
+            // Draw field
+            ctx.fillStyle = '#2d5016';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Field markings
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 1;
+
+            // Yard lines every 10 yards
+            for (let yard = 0; yard <= 100; yard += 10) {
+                const x = yardToX(yard);
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+
+                // Yard numbers
+                if (yard > 0 && yard < 100) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                    ctx.font = '20px Arial';
+                    ctx.textAlign = 'center';
+                    const displayYard = yard <= 50 ? yard : 100 - yard;
+                    ctx.fillText(displayYard, x, 30);
+                    ctx.fillText(displayYard, x, canvas.height - 15);
+                }
+            }
+
+            // Hash marks
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            for (let yard = 0; yard <= 100; yard += 1) {
+                const x = yardToX(yard);
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height * 0.3);
+                ctx.lineTo(x, canvas.height * 0.32);
+                ctx.moveTo(x, canvas.height * 0.68);
+                ctx.lineTo(x, canvas.height * 0.7);
+                ctx.stroke();
+            }
+
+            // Endzones
+            ctx.fillStyle = '#1a3d0c';
+            ctx.fillRect(0, 0, yardToX(0) + 20, canvas.height);
+            ctx.fillStyle = '#3d1a0c';
+            ctx.fillRect(yardToX(100) - 20, 0, 40, canvas.height);
+
+            // Endzone text
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = 'bold 30px Arial';
+            ctx.translate(15, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText('HOME', 0, 0);
+            ctx.restore();
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = 'bold 30px Arial';
+            ctx.translate(canvas.width - 15, canvas.height / 2);
+            ctx.rotate(Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText('GOAL', 0, 0);
+            ctx.restore();
+
+            // Line of scrimmage
+            ctx.strokeStyle = '#4169E1';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 5]);
+            ctx.beginPath();
+            ctx.moveTo(yardToX(game.lineOfScrimmage), 0);
+            ctx.lineTo(yardToX(game.lineOfScrimmage), canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // First down line
+            if (game.firstDownLine < 100) {
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(yardToX(game.firstDownLine), 0);
+                ctx.lineTo(yardToX(game.firstDownLine), canvas.height);
+                ctx.stroke();
+            }
+
+            // Draw players as people
+            game.players.forEach(player => {
+                ctx.save();
+                const x = player.x;
+                const y = player.y;
+
+                // Animation based on time
+                const runCycle = Math.sin(Date.now() / 100 + player.x) * 3;
+                const isMoving = game.playActive;
+
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(x, y + 18, 10, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Legs (animated when moving)
+                ctx.strokeStyle = player.team === 'home' ? '#1a1a1a' : '#1a1a1a';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+
+                // Left leg
+                ctx.beginPath();
+                ctx.moveTo(x - 4, y + 8);
+                ctx.lineTo(x - 4 + (isMoving ? runCycle : 0), y + 18);
+                ctx.stroke();
+
+                // Right leg
+                ctx.beginPath();
+                ctx.moveTo(x + 4, y + 8);
+                ctx.lineTo(x + 4 - (isMoving ? runCycle : 0), y + 18);
+                ctx.stroke();
+
+                // Body/Jersey
+                ctx.fillStyle = player.color;
+                ctx.beginPath();
+                ctx.roundRect(x - 8, y - 5, 16, 15, 3);
+                ctx.fill();
+
+                // Jersey outline
+                ctx.strokeStyle = player.team === 'home' ? '#fff' : '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Arms
+                ctx.strokeStyle = '#ffccaa';
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+
+                // Left arm
+                ctx.beginPath();
+                ctx.moveTo(x - 8, y);
+                ctx.lineTo(x - 14, y + (isMoving ? runCycle * 0.5 : 5));
+                ctx.stroke();
+
+                // Right arm
+                ctx.beginPath();
+                ctx.moveTo(x + 8, y);
+                ctx.lineTo(x + 14, y - (isMoving ? runCycle * 0.5 : -5));
+                ctx.stroke();
+
+                // Head
+                ctx.fillStyle = '#ffccaa';
+                ctx.beginPath();
+                ctx.arc(x, y - 12, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Helmet
+                const helmetColor = player.team === 'home' ? player.color : '#CC0000';
+                ctx.fillStyle = helmetColor;
+                ctx.beginPath();
+                ctx.arc(x, y - 13, 9, Math.PI, 0);
+                ctx.fill();
+
+                // Helmet stripe
+                ctx.strokeStyle = player.team === 'home' ? '#fff' : '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x, y - 22);
+                ctx.lineTo(x, y - 13);
+                ctx.stroke();
+
+                // Facemask
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(x, y - 10, 5, 0.3, Math.PI - 0.3);
+                ctx.stroke();
+
+                // Jersey number
+                ctx.fillStyle = player.team === 'home' ? '#fff' : '#fff';
+                ctx.font = 'bold 8px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const num = player.number || (player.role === 'QB' ? '12' : player.role === 'WR' ? '88' : player.role === 'RB' ? '28' : player.role === 'TE' ? '87' : '55');
+                ctx.fillText(num, x, y + 2);
+
+                // Ball in hands if holding
+                if (player.hasBall) {
+                    ctx.fillStyle = '#8B4513';
+                    ctx.beginPath();
+                    ctx.ellipse(x + 12, y - 2, 6, 4, 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x + 9, y - 2);
+                    ctx.lineTo(x + 15, y - 2);
+                    ctx.stroke();
+                }
+
+                // Highlight clickable receivers
+                if (game.phase === 'playing' && game.playType === 'pass' && !game.passThrown &&
+                    player.team === 'home' && player.role !== 'QB' && player.role !== 'OL') {
+                    ctx.strokeStyle = 'rgba(255,255,0,0.7)';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.arc(x, y, 22, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Player name label above
+                    ctx.fillStyle = '#FFD700';
+                    ctx.font = 'bold 10px Arial';
+                    const labelName = player.nflName ? player.nflName.split(' ').pop() : player.role;
+                    ctx.fillText(labelName, x, y - 28);
+                }
+
+                ctx.restore();
+            });
+
+            // Draw ball when in air
+            if (game.passThrown && !game.ball.holder) {
+                const ballSize = BALL_RADIUS + game.ball.z * 0.2;
+
+                // Ball shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.beginPath();
+                ctx.ellipse(game.ball.x, game.ball.y + 5, ballSize, ballSize * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Ball
+                ctx.fillStyle = '#8B4513';
+                ctx.beginPath();
+                ctx.ellipse(game.ball.x, game.ball.y - game.ball.z, ballSize * 1.5, ballSize, 0.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Laces
+                ctx.strokeStyle = '#FFF';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(game.ball.x - 3, game.ball.y - game.ball.z);
+                ctx.lineTo(game.ball.x + 3, game.ball.y - game.ball.z);
+                ctx.stroke();
+            }
+
+            // Draw message
+            if (game.message && game.message.time > 0) {
+                ctx.fillStyle = game.message.color;
+                ctx.font = 'bold 48px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 10;
+                ctx.fillText(game.message.text, canvas.width / 2, canvas.height / 2);
+                ctx.shadowBlur = 0;
+                game.message.time--;
+            }
+
+            // Update UI
+            document.getElementById('homeScore').textContent = game.homeScore;
+            document.getElementById('awayScore').textContent = game.awayScore;
+            document.getElementById('quarterDisplay').textContent = 'Q' + game.quarter;
+
+            const mins = Math.floor(game.timeRemaining / 60);
+            const secs = game.timeRemaining % 60;
+            document.getElementById('timeDisplay').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+            const downStr = game.down === 1 ? '1st' : game.down === 2 ? '2nd' : game.down === 3 ? '3rd' : '4th';
+            const yardStr = game.ballOn < 50 ? `OWN ${game.ballOn}` : game.ballOn > 50 ? `OPP ${100 - game.ballOn}` : '50';
+            document.getElementById('gameInfo').textContent = `${downStr} & ${game.yardsToGo} at ${yardStr}`;
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            if (game.phase !== 'gameOver') {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Input handlers
+        document.addEventListener('keydown', e => {
+            game.keys[e.code] = true;
+        });
+
+        document.addEventListener('keyup', e => {
+            game.keys[e.code] = false;
+        });
+
+        canvas.addEventListener('click', e => {
+            if (game.phase !== 'playing' || game.playType !== 'pass' || game.passThrown) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Find clicked receiver
+            const receiver = game.players.find(p => {
+                if (p.team !== 'home' || p.role === 'QB' || p.role === 'OL') return false;
+                const dx = p.x - x;
+                const dy = p.y - y;
+                return Math.sqrt(dx * dx + dy * dy) < 25;
+            });
+
+            if (receiver) {
+                throwPass(receiver);
+            }
+        });
+
+        // Play selection buttons
+        document.getElementById('passBtn').addEventListener('click', () => selectPlay('pass'));
+        document.getElementById('runBtn').addEventListener('click', () => selectPlay('run'));
+        document.getElementById('puntBtn').addEventListener('click', () => selectPlay('punt'));
+        document.getElementById('fgBtn').addEventListener('click', () => selectPlay('fg'));
+
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>

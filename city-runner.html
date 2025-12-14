@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Runner - Escape the Monster!</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: 'Courier New', monospace;
+        }
+        #gameContainer {
+            text-align: center;
+        }
+        canvas {
+            border: 3px solid #fff;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            background: #2c3e50;
+        }
+        #hud {
+            color: #fff;
+            font-size: 20px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-around;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .stat {
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        #instructions {
+            color: #ecf0f1;
+            font-size: 14px;
+            margin-top: 10px;
+            max-width: 800px;
+        }
+        #startMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #3498db;
+            text-align: center;
+            z-index: 10;
+        }
+        #startMessage h2 {
+            font-size: 36px;
+            margin: 0 0 20px 0;
+            color: #3498db;
+        }
+        #startMessage p {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        #startButton {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-family: 'Courier New', monospace;
+            background: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #startButton:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+        #backButton {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            background: rgba(236, 240, 241, 0.1);
+            color: #ecf0f1;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #backButton:hover {
+            background: rgba(236, 240, 241, 0.2);
+            transform: scale(1.05);
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            border: 3px solid #e74c3c;
+            display: none;
+            z-index: 10;
+        }
+        #gameOver h2 {
+            font-size: 48px;
+            margin: 0 0 20px 0;
+            color: #e74c3c;
+        }
+        #gameOver p {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        #restartButton {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-family: 'Courier New', monospace;
+            background: #e74c3c;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #restartButton:hover {
+            background: #c0392b;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="hud">
+            <div class="stat">Distance: <span id="distance">0</span>m</div>
+            <div class="stat">Speed: <span id="speed">5</span></div>
+            <div class="stat">Lives: <span id="lives">3</span></div>
+            <div class="stat">Ammo: <span id="ammo">0</span> 🔫</div>
+        </div>
+        <div style="text-align: center; color: #fff; font-size: 14px; margin-top: 5px;">
+            Skin: <span id="currentSkin" style="color: #3498db; font-weight: bold;"></span>
+        </div>
+        <div id="instructions">Keys: A/D = Switch lanes, SPACE = Shoot • Pick up ⚡ for speed boost! • Touch: Swipe left/right, Tap = Shoot</div>
+        <button id="backButton" onclick="window.location.href='index.html'">Back to Menu</button>
+
+        <div id="startMessage">
+            <h2>CITY RUNNER</h2>
+            <p>You're being chased by a monster!</p>
+            <p><strong>Keyboard:</strong> A/D to dodge, SPACE to shoot</p>
+            <p><strong>Touch:</strong> Swipe left/right, Tap to shoot</p>
+            <p>Pick up 🔫 guns for ammo and ⚡ for speed boost!</p>
+            <button id="startButton">START RUNNING!</button>
+            <button id="openSkinsButton" style="margin-top: 10px; padding: 12px 30px; font-size: 16px; font-family: 'Courier New', monospace; background: rgba(52, 152, 219, 0.3); color: #3498db; border: 2px solid #3498db; border-radius: 8px; cursor: pointer;">CHANGE SKIN</button>
+        </div>
+
+        <div id="gameOver">
+            <h2>GAME OVER!</h2>
+            <p>Distance: <span id="finalDistance">0</span>m</p>
+            <p id="deathReason"></p>
+            <p id="newUnlocks" style="color: #2ecc71; font-size: 18px; margin: 10px 0;"></p>
+            <button id="restartButton">Play Again</button>
+        </div>
+
+        <div id="skinSelector" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 30px; border-radius: 15px; border: 3px solid #3498db; display: none; z-index: 10; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <h2 style="color: #3498db; margin-bottom: 20px;">SELECT YOUR SKIN</h2>
+            <div id="skinGrid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;"></div>
+            <button id="closeSkinSelector" style="padding: 12px 30px; font-size: 16px; font-family: 'Courier New', monospace; background: #3498db; color: #fff; border: none; border-radius: 8px; cursor: pointer;">CLOSE</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game constants
+        const GRID_SIZE = 100; // Size of each lane/row
+        const LANES = 8;
+        const ROWS = 6;
+
+        // Skins system
+        const SKINS = [
+            { id: 0, name: 'Classic Blue', color: '#3498db', unlockDistance: 0, eyeColor: '#000', design: 'basic' },
+            { id: 1, name: 'Speedster Red', color: '#e74c3c', unlockDistance: 100, eyeColor: '#000', design: 'basic' },
+            { id: 2, name: 'Emerald Runner', color: '#2ecc71', unlockDistance: 250, eyeColor: '#000', design: 'basic' },
+            { id: 3, name: 'Golden Champion', color: '#f39c12', unlockDistance: 500, eyeColor: '#000', design: 'crown' },
+            { id: 4, name: 'Purple Legend', color: '#9b59b6', unlockDistance: 750, eyeColor: '#000', design: 'basic' },
+            { id: 5, name: 'Tiger Stripes', color: '#e67e22', unlockDistance: 1000, eyeColor: '#000', design: 'stripes', color2: '#000' },
+            { id: 6, name: 'Neon Cyan', color: '#1abc9c', unlockDistance: 1500, eyeColor: '#000', design: 'glow' },
+            { id: 7, name: 'Cool Dude', color: '#3498db', unlockDistance: 2000, eyeColor: '#000', design: 'sunglasses' },
+            { id: 8, name: 'Checkered Racer', color: '#ecf0f1', unlockDistance: 2500, eyeColor: '#000', design: 'checkered', color2: '#2c3e50' },
+            { id: 9, name: 'Fire Demon', color: '#e74c3c', unlockDistance: 3000, eyeColor: '#f39c12', design: 'fire' },
+            { id: 10, name: 'Ice King', color: '#3498db', unlockDistance: 3500, eyeColor: '#fff', design: 'ice' },
+            { id: 11, name: 'Shadow Master', color: '#2c3e50', unlockDistance: 4000, eyeColor: '#e74c3c', design: 'shadow' },
+            { id: 12, name: 'Electric Hero', color: '#f1c40f', unlockDistance: 4500, eyeColor: '#000', design: 'electric' },
+            { id: 13, name: 'Diamond Pro', color: '#95a5a6', unlockDistance: 5000, eyeColor: '#3498db', design: 'diamond' },
+            { id: 14, name: 'Party Star', color: '#e91e63', unlockDistance: 6000, eyeColor: '#fff', design: 'star' },
+            { id: 15, name: 'Rainbow Elite', color: 'rainbow', unlockDistance: 7500, eyeColor: '#fff', design: 'rainbow' },
+            { id: 16, name: 'Galaxy Runner', color: '#1a237e', unlockDistance: 10000, eyeColor: '#fff', design: 'galaxy' },
+            { id: 17, name: 'Orangutan King', color: '#d2691e', unlockDistance: 100000, eyeColor: '#8B4513', design: 'orangutan' }
+        ];
+
+        // Load unlocked skins and selected skin from localStorage
+        let unlockedSkins = JSON.parse(localStorage.getItem('cityRunnerUnlockedSkins') || '[0]');
+        let selectedSkinId = parseInt(localStorage.getItem('cityRunnerSelectedSkin') || '0');
+        let highestDistance = parseInt(localStorage.getItem('cityRunnerHighestDistance') || '0');
+
+        let gameState = {
+            player: {
+                lane: 4,
+                x: 0,
+                y: 0, // World position - increases as player runs
+                worldY: 500, // Starting world position
+                screenY: 450, // Fixed screen position
+                size: 35,
+                speed: 5,
+                color: SKINS[selectedSkinId].color,
+                eyeColor: SKINS[selectedSkinId].eyeColor,
+                design: SKINS[selectedSkinId].design,
+                color2: SKINS[selectedSkinId].color2,
+                autoRunSpeed: 5,
+                ammo: 0,
+                hasGun: false,
+                speedBoostActive: false,
+                speedBoostEndTime: 0
+            },
+            monster: {
+                lane: 4,
+                x: 0,
+                y: 0,
+                worldY: 650, // Starts behind player in world space
+                size: 45,
+                speed: 4.5,
+                color: '#e74c3c'
+            },
+            obstacles: [],
+            buildings: [],
+            gunPickups: [],
+            speedBoosters: [],
+            bullets: [],
+            distance: 0,
+            speed: 5,
+            lives: 3,
+            gameOver: false,
+            gameStarted: false,
+            cameraY: 0,
+            invincible: false,
+            invincibleTime: 0,
+            particles: [],
+            newlyUnlockedSkins: [] // Track skins unlocked in current game
+        };
+
+        const keys = {};
+        let lastLaneSwitch = 0;
+        let lastShot = 0;
+
+        // Touch controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (!gameState.gameStarted || gameState.gameOver) return;
+            e.preventDefault();
+
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchStartTime = Date.now();
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (!gameState.gameStarted || gameState.gameOver) return;
+            e.preventDefault();
+
+            const touch = e.changedTouches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            const deltaTime = Date.now() - touchStartTime;
+            const now = Date.now();
+
+            // Tap to shoot (quick tap, not much movement)
+            if (Math.abs(deltaX) < 30 && Math.abs(deltaY) < 30 && deltaTime < 200) {
+                if (gameState.player.ammo > 0 && now - lastShot > 200) {
+                    shoot();
+                    lastShot = now;
+                }
+                return;
+            }
+
+            // Swipe detection
+            if (now - lastLaneSwitch < 150) return;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Horizontal swipe
+                if (deltaX > 50) {
+                    // Swipe right
+                    if (gameState.player.lane < LANES - 1) {
+                        gameState.player.lane++;
+                        lastLaneSwitch = now;
+                    }
+                } else if (deltaX < -50) {
+                    // Swipe left
+                    if (gameState.player.lane > 0) {
+                        gameState.player.lane--;
+                        lastLaneSwitch = now;
+                    }
+                }
+            }
+        });
+
+        // Keyboard input handling
+        document.addEventListener('keydown', (e) => {
+            if (!gameState.gameStarted || gameState.gameOver) return;
+
+            keys[e.key] = true;
+            const now = Date.now();
+
+            // Shooting
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                e.preventDefault();
+                if (gameState.player.ammo > 0 && now - lastShot > 200) {
+                    shoot();
+                    lastShot = now;
+                }
+            }
+
+            // Add cooldown to prevent too rapid switching
+            if (now - lastLaneSwitch < 150) return;
+
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                if (gameState.player.lane > 0) {
+                    gameState.player.lane--;
+                    lastLaneSwitch = now;
+                }
+            }
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                if (gameState.player.lane < LANES - 1) {
+                    gameState.player.lane++;
+                    lastLaneSwitch = now;
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        document.getElementById('startButton').addEventListener('click', () => {
+            gameState.gameStarted = true;
+            document.getElementById('startMessage').style.display = 'none';
+        });
+
+        document.getElementById('restartButton').addEventListener('click', () => {
+            restartGame();
+        });
+
+        document.getElementById('openSkinsButton').addEventListener('click', () => {
+            openSkinSelector();
+        });
+
+        document.getElementById('closeSkinSelector').addEventListener('click', () => {
+            document.getElementById('skinSelector').style.display = 'none';
+        });
+
+        function openSkinSelector() {
+            const skinGrid = document.getElementById('skinGrid');
+            skinGrid.innerHTML = '';
+
+            SKINS.forEach(skin => {
+                const isUnlocked = unlockedSkins.includes(skin.id);
+                const isSelected = skin.id === selectedSkinId;
+
+                const skinCard = document.createElement('div');
+                skinCard.style.cssText = `
+                    background: ${isUnlocked ? 'rgba(52, 152, 219, 0.2)' : 'rgba(100, 100, 100, 0.2)'};
+                    border: 3px solid ${isSelected ? '#2ecc71' : (isUnlocked ? '#3498db' : '#555')};
+                    border-radius: 10px;
+                    padding: 15px;
+                    text-align: center;
+                    cursor: ${isUnlocked ? 'pointer' : 'not-allowed'};
+                    transition: all 0.3s ease;
+                    opacity: ${isUnlocked ? '1' : '0.5'};
+                `;
+
+                if (isUnlocked) {
+                    skinCard.onmouseenter = () => skinCard.style.transform = 'scale(1.05)';
+                    skinCard.onmouseleave = () => skinCard.style.transform = 'scale(1)';
+                    skinCard.onclick = () => selectSkin(skin.id);
+                }
+
+                // Preview square
+                const preview = document.createElement('div');
+                preview.style.cssText = `
+                    width: 60px;
+                    height: 60px;
+                    margin: 0 auto 10px auto;
+                    border-radius: 5px;
+                    ${skin.color === 'rainbow' ? 'background: linear-gradient(45deg, #e74c3c, #f39c12, #2ecc71, #3498db, #9b59b6);' : `background: ${skin.color};`}
+                `;
+                skinCard.appendChild(preview);
+
+                // Skin name
+                const name = document.createElement('div');
+                name.textContent = skin.name;
+                name.style.cssText = 'font-weight: bold; margin-bottom: 5px; font-size: 14px;';
+                skinCard.appendChild(name);
+
+                // Unlock requirement
+                const unlock = document.createElement('div');
+                unlock.textContent = isUnlocked ? (isSelected ? '✓ SELECTED' : 'Click to select') : `Unlock: ${skin.unlockDistance}m`;
+                unlock.style.cssText = `font-size: 12px; color: ${isUnlocked ? '#2ecc71' : '#95a5a6'};`;
+                skinCard.appendChild(unlock);
+
+                skinGrid.appendChild(skinCard);
+            });
+
+            document.getElementById('skinSelector').style.display = 'block';
+        }
+
+        function selectSkin(skinId) {
+            if (!unlockedSkins.includes(skinId)) return;
+
+            selectedSkinId = skinId;
+            localStorage.setItem('cityRunnerSelectedSkin', skinId);
+
+            // Update player properties
+            gameState.player.color = SKINS[skinId].color;
+            gameState.player.eyeColor = SKINS[skinId].eyeColor;
+            gameState.player.design = SKINS[skinId].design;
+            gameState.player.color2 = SKINS[skinId].color2;
+
+            // Update skin display
+            document.getElementById('currentSkin').textContent = SKINS[skinId].name;
+
+            // Refresh skin selector
+            openSkinSelector();
+        }
+
+        function checkSkinUnlocks() {
+            const currentDistance = Math.floor(gameState.distance);
+
+            SKINS.forEach(skin => {
+                if (currentDistance >= skin.unlockDistance && !unlockedSkins.includes(skin.id)) {
+                    unlockedSkins.push(skin.id);
+                    gameState.newlyUnlockedSkins.push(skin);
+                    localStorage.setItem('cityRunnerUnlockedSkins', JSON.stringify(unlockedSkins));
+                }
+            });
+        }
+
+        function restartGame() {
+            gameState = {
+                player: {
+                    lane: 4,
+                    x: 0,
+                    y: 0,
+                    worldY: 500,
+                    screenY: 450,
+                    size: 35,
+                    speed: 5,
+                    color: SKINS[selectedSkinId].color,
+                    eyeColor: SKINS[selectedSkinId].eyeColor,
+                    design: SKINS[selectedSkinId].design,
+                    color2: SKINS[selectedSkinId].color2,
+                    autoRunSpeed: 5,
+                    ammo: 0,
+                    hasGun: false,
+                    speedBoostActive: false,
+                    speedBoostEndTime: 0
+                },
+                monster: {
+                    lane: 4,
+                    x: 0,
+                    y: 0,
+                    worldY: 650,
+                    size: 45,
+                    speed: 4.5,
+                    color: '#e74c3c'
+                },
+                obstacles: [],
+                buildings: [],
+                gunPickups: [],
+                speedBoosters: [],
+                bullets: [],
+                distance: 0,
+                speed: 5,
+                lives: 3,
+                gameOver: false,
+                gameStarted: true,
+                cameraY: 0,
+                invincible: false,
+                invincibleTime: 0,
+                particles: [],
+                newlyUnlockedSkins: []
+            };
+            document.getElementById('gameOver').style.display = 'none';
+            initBuildings();
+        }
+
+        function initBuildings() {
+            gameState.buildings = [];
+            for (let i = 0; i < 30; i++) {
+                const isLeft = Math.random() < 0.5;
+                gameState.buildings.push({
+                    x: isLeft ? -50 - Math.random() * 100 : canvas.width + 50 + Math.random() * 100,
+                    y: i * -200 + Math.random() * 100,
+                    width: 80 + Math.random() * 120,
+                    height: 200 + Math.random() * 300,
+                    color: `hsl(${200 + Math.random() * 30}, 20%, ${15 + Math.random() * 15}%)`,
+                    windowRows: 8 + Math.floor(Math.random() * 12),
+                    windowCols: 4 + Math.floor(Math.random() * 4),
+                    isLeft: isLeft
+                });
+            }
+        }
+
+        function spawnObstacle() {
+            if (Math.random() < 0.06) { // 6% chance each frame (doubled from 3%)
+                const lane = Math.floor(Math.random() * LANES);
+
+                // Don't spawn in player's lane too frequently
+                if (lane === gameState.player.lane && Math.random() < 0.7) {
+                    return;
+                }
+
+                // Random obstacle type: car, barrier, or hole
+                const rand = Math.random();
+                let type, color;
+                if (rand < 0.4) {
+                    type = 'car';
+                    color = Math.random() < 0.5 ? '#f39c12' : '#95a5a6';
+                } else if (rand < 0.7) {
+                    type = 'barrier';
+                    color = Math.random() < 0.5 ? '#f39c12' : '#95a5a6';
+                } else {
+                    type = 'hole';
+                    color = '#000';
+                }
+
+                gameState.obstacles.push({
+                    lane: lane,
+                    worldY: gameState.player.worldY - 600, // Spawn ahead in world space
+                    type: type,
+                    color: color
+                });
+            }
+        }
+
+        function spawnGunPickup() {
+            if (Math.random() < 0.015) { // 1.5% chance each frame (more frequent since they're stationary)
+                const lane = Math.floor(Math.random() * LANES);
+
+                // Spawn guns in world space ahead of player
+                const spawnDistance = 200 + Math.random() * 300; // 200-500 pixels ahead
+
+                gameState.gunPickups.push({
+                    lane: lane,
+                    worldY: gameState.player.worldY - spawnDistance, // Fixed world position
+                    ammo: 3 + Math.floor(Math.random() * 5) // 3-7 bullets (reduced from 10-24)
+                });
+            }
+        }
+
+        function spawnSpeedBooster() {
+            if (Math.random() < 0.01) { // 1% chance each frame
+                const lane = Math.floor(Math.random() * LANES);
+
+                // Spawn speed boosters in world space ahead of player
+                const spawnDistance = 200 + Math.random() * 400; // 200-600 pixels ahead
+
+                gameState.speedBoosters.push({
+                    lane: lane,
+                    worldY: gameState.player.worldY - spawnDistance, // Fixed world position
+                    duration: 5000 // 5 seconds boost
+                });
+            }
+        }
+
+        function shoot() {
+            if (gameState.player.ammo <= 0) return;
+
+            gameState.player.ammo--;
+            gameState.bullets.push({
+                lane: gameState.player.lane,
+                x: gameState.player.x,
+                y: gameState.player.y - 30,
+                speed: 15
+            });
+
+            // Muzzle flash particles
+            for (let i = 0; i < 5; i++) {
+                gameState.particles.push({
+                    x: gameState.player.x,
+                    y: gameState.player.y - 20,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: -Math.random() * 5 - 5,
+                    life: 15,
+                    color: '#f39c12'
+                });
+            }
+        }
+
+        function updatePlayer() {
+            // Update horizontal position based on lane
+            const targetX = gameState.player.lane * GRID_SIZE + GRID_SIZE / 2;
+            gameState.player.x += (targetX - gameState.player.x) * 0.25;
+
+            // Check if speed boost is active
+            let currentSpeed = gameState.player.autoRunSpeed;
+            if (gameState.player.speedBoostActive) {
+                if (Date.now() < gameState.player.speedBoostEndTime) {
+                    currentSpeed = gameState.player.autoRunSpeed * 2.5; // 2.5x speed boost
+                } else {
+                    gameState.player.speedBoostActive = false;
+                }
+            }
+
+            // Player moves forward in world space (auto-running)
+            gameState.player.worldY -= currentSpeed;
+
+            // Update camera to follow player
+            gameState.cameraY = gameState.player.worldY - gameState.player.screenY;
+
+            // Screen position stays fixed
+            gameState.player.y = gameState.player.screenY;
+        }
+
+        function updateMonster() {
+            // Monster chases player in world space
+            gameState.monster.worldY -= gameState.monster.speed;
+
+            // Monster AI - chase player's lane
+            const dx = gameState.player.lane - gameState.monster.lane;
+
+            // Move monster toward player's lane
+            if (Math.abs(dx) > 0) {
+                if (dx > 0 && Math.random() < 0.12) {
+                    gameState.monster.lane = Math.min(LANES - 1, gameState.monster.lane + 1);
+                } else if (dx < 0 && Math.random() < 0.12) {
+                    gameState.monster.lane = Math.max(0, gameState.monster.lane - 1);
+                }
+            }
+
+            // Update position
+            const targetX = gameState.monster.lane * GRID_SIZE + GRID_SIZE / 2;
+            gameState.monster.x += (targetX - gameState.monster.x) * 0.15;
+
+            // Convert world position to screen position
+            gameState.monster.y = gameState.monster.worldY - gameState.cameraY;
+        }
+
+        function updateObstacles() {
+            for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
+                const obs = gameState.obstacles[i];
+
+                // Obstacles stay in their world position
+                // Convert to screen position based on camera
+                obs.y = obs.worldY - gameState.cameraY;
+                obs.x = obs.lane * GRID_SIZE + GRID_SIZE / 2;
+
+                // Remove if player has passed them
+                if (obs.worldY > gameState.player.worldY + 200) {
+                    gameState.obstacles.splice(i, 1);
+                }
+            }
+        }
+
+        function updateBullets() {
+            for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                const bullet = gameState.bullets[i];
+                bullet.y -= bullet.speed;
+
+                // Remove if off screen
+                if (bullet.y < -50) {
+                    gameState.bullets.splice(i, 1);
+                    continue;
+                }
+
+                // Check collision with obstacles (but not holes - you can't shoot holes!)
+                for (let j = gameState.obstacles.length - 1; j >= 0; j--) {
+                    const obs = gameState.obstacles[j];
+
+                    if (obs.type !== 'hole' && Math.abs(bullet.x - obs.x) < 40 && Math.abs(bullet.y - obs.y) < 40) {
+                        // Destroy obstacle (cars and barriers only)
+                        gameState.obstacles.splice(j, 1);
+                        gameState.bullets.splice(i, 1);
+
+                        // Explosion particles
+                        for (let k = 0; k < 15; k++) {
+                            gameState.particles.push({
+                                x: obs.x,
+                                y: obs.y,
+                                vx: (Math.random() - 0.5) * 10,
+                                vy: (Math.random() - 0.5) * 10,
+                                life: 25,
+                                color: '#e74c3c'
+                            });
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        function updateGunPickups() {
+            for (let i = gameState.gunPickups.length - 1; i >= 0; i--) {
+                const gun = gameState.gunPickups[i];
+
+                // Guns stay in their world position (stationary)
+                gun.x = gun.lane * GRID_SIZE + GRID_SIZE / 2;
+                gun.y = gun.worldY - gameState.cameraY; // Convert to screen space
+
+                // Remove if player has passed them (they're now behind player)
+                if (gun.worldY > gameState.player.worldY + 100) {
+                    gameState.gunPickups.splice(i, 1);
+                    continue;
+                }
+
+                // Check collision with player (in screen space)
+                const dist = Math.hypot(gun.x - gameState.player.x, gun.y - gameState.player.y);
+                if (dist < 40) {
+                    gameState.player.ammo += gun.ammo;
+                    gameState.player.hasGun = true;
+                    gameState.gunPickups.splice(i, 1);
+
+                    // Pickup particles
+                    for (let k = 0; k < 10; k++) {
+                        gameState.particles.push({
+                            x: gun.x,
+                            y: gun.y,
+                            vx: (Math.random() - 0.5) * 8,
+                            vy: (Math.random() - 0.5) * 8,
+                            life: 20,
+                            color: '#2ecc71'
+                        });
+                    }
+                }
+            }
+        }
+
+        function updateSpeedBoosters() {
+            for (let i = gameState.speedBoosters.length - 1; i >= 0; i--) {
+                const booster = gameState.speedBoosters[i];
+
+                // Boosters stay in their world position (stationary)
+                booster.x = booster.lane * GRID_SIZE + GRID_SIZE / 2;
+                booster.y = booster.worldY - gameState.cameraY; // Convert to screen space
+
+                // Remove if player has passed them (they're now behind player)
+                if (booster.worldY > gameState.player.worldY + 100) {
+                    gameState.speedBoosters.splice(i, 1);
+                    continue;
+                }
+
+                // Check collision with player (in screen space)
+                const dist = Math.hypot(booster.x - gameState.player.x, booster.y - gameState.player.y);
+                if (dist < 40) {
+                    gameState.player.speedBoostActive = true;
+                    gameState.player.speedBoostEndTime = Date.now() + booster.duration;
+                    gameState.speedBoosters.splice(i, 1);
+
+                    // Pickup particles
+                    for (let k = 0; k < 20; k++) {
+                        gameState.particles.push({
+                            x: booster.x,
+                            y: booster.y,
+                            vx: (Math.random() - 0.5) * 12,
+                            vy: (Math.random() - 0.5) * 12,
+                            life: 30,
+                            color: '#e67e22'
+                        });
+                    }
+                }
+            }
+        }
+
+        function updateBuildings() {
+            for (let building of gameState.buildings) {
+                building.y += gameState.speed * 0.3; // Buildings scroll slower (parallax)
+
+                if (building.y > canvas.height) {
+                    building.y = -building.height;
+                    building.x = Math.random() * canvas.width;
+                    building.width = 60 + Math.random() * 80;
+                    building.height = 150 + Math.random() * 200;
+                    building.color = `hsl(${200 + Math.random() * 40}, 30%, ${20 + Math.random() * 20}%)`;
+                }
+            }
+        }
+
+        function checkCollisions() {
+            if (gameState.invincible) return;
+
+            // Check monster collision
+            const dist = Math.hypot(
+                gameState.player.x - gameState.monster.x,
+                gameState.player.y - gameState.monster.y
+            );
+
+            if (dist < (gameState.player.size + gameState.monster.size) / 2) {
+                endGame('Caught by the monster!');
+                return;
+            }
+
+            // Check obstacle collisions (in screen space)
+            for (let obs of gameState.obstacles) {
+                if (obs.lane === gameState.player.lane) {
+                    // Check if obstacle is at player's position
+                    if (Math.abs(obs.y - gameState.player.y) < 50) {
+                        loseLife('Hit an obstacle!');
+                        return;
+                    }
+                }
+            }
+        }
+
+        function loseLife(reason) {
+            gameState.lives--;
+            gameState.invincible = true;
+            gameState.invincibleTime = Date.now();
+
+            // Create explosion particles
+            for (let i = 0; i < 20; i++) {
+                gameState.particles.push({
+                    x: gameState.player.x,
+                    y: gameState.player.y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 30,
+                    color: '#f39c12'
+                });
+            }
+
+            if (gameState.lives <= 0) {
+                endGame(reason);
+            }
+
+            setTimeout(() => {
+                gameState.invincible = false;
+            }, 2000);
+        }
+
+        function endGame(reason) {
+            gameState.gameOver = true;
+            const finalDistance = Math.floor(gameState.distance);
+            document.getElementById('finalDistance').textContent = finalDistance;
+            document.getElementById('deathReason').textContent = reason;
+
+            // Update highest distance
+            if (finalDistance > highestDistance) {
+                highestDistance = finalDistance;
+                localStorage.setItem('cityRunnerHighestDistance', highestDistance);
+            }
+
+            // Show newly unlocked skins
+            const newUnlocksElement = document.getElementById('newUnlocks');
+            if (gameState.newlyUnlockedSkins.length > 0) {
+                const skinNames = gameState.newlyUnlockedSkins.map(s => s.name).join(', ');
+                newUnlocksElement.textContent = `🎉 NEW SKIN${gameState.newlyUnlockedSkins.length > 1 ? 'S' : ''} UNLOCKED: ${skinNames}!`;
+            } else {
+                newUnlocksElement.textContent = '';
+            }
+
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function updateParticles() {
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const p = gameState.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+
+                if (p.life <= 0) {
+                    gameState.particles.splice(i, 1);
+                }
+            }
+        }
+
+        function updateGame() {
+            if (gameState.gameOver || !gameState.gameStarted) return;
+
+            updatePlayer();
+            updateMonster();
+            updateObstacles();
+            updateBuildings();
+            updateParticles();
+            updateBullets();
+            updateGunPickups();
+            updateSpeedBoosters();
+            spawnObstacle();
+            spawnGunPickup();
+            spawnSpeedBooster();
+            checkCollisions();
+            checkSkinUnlocks();
+
+            // Update distance based on actual world movement
+            gameState.distance = (500 - gameState.player.worldY) / 10; // Convert world units to meters
+
+            // Keep speed constant (no increase over time)
+            // Update displayed speed to show boost effect
+            if (gameState.player.speedBoostActive && Date.now() < gameState.player.speedBoostEndTime) {
+                gameState.speed = gameState.player.autoRunSpeed * 2.5;
+            } else {
+                gameState.speed = gameState.player.autoRunSpeed;
+            }
+
+            // Update HUD
+            document.getElementById('distance').textContent = Math.floor(gameState.distance);
+            document.getElementById('speed').textContent = gameState.speed.toFixed(1);
+            document.getElementById('lives').textContent = gameState.lives;
+            document.getElementById('ammo').textContent = gameState.player.ammo;
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 1;
+
+            // Draw vertical lines
+            for (let i = 0; i <= LANES; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * GRID_SIZE, 0);
+                ctx.lineTo(i * GRID_SIZE, canvas.height);
+                ctx.stroke();
+            }
+
+            // Draw horizontal lines
+            for (let i = 0; i <= ROWS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * GRID_SIZE);
+                ctx.lineTo(canvas.width, i * GRID_SIZE);
+                ctx.stroke();
+            }
+        }
+
+        function drawBuildings() {
+            for (let building of gameState.buildings) {
+                // Building shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.fillRect(building.x + 10, building.y + 10, building.width, building.height);
+
+                // Building gradient
+                const gradient = ctx.createLinearGradient(building.x, 0, building.x + building.width, 0);
+                gradient.addColorStop(0, building.color);
+                gradient.addColorStop(0.5, `hsl(${200 + Math.random() * 30}, 20%, ${25 + Math.random() * 10}%)`);
+                gradient.addColorStop(1, building.color);
+                ctx.fillStyle = gradient;
+                ctx.fillRect(building.x, building.y, building.width, building.height);
+
+                // Building edge highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                ctx.fillRect(building.x, building.y, 2, building.height);
+
+                // Windows in grid
+                const windowWidth = (building.width - 20) / building.windowCols;
+                const windowHeight = 15;
+                const windowSpacing = building.height / building.windowRows;
+
+                for (let row = 0; row < building.windowRows; row++) {
+                    for (let col = 0; col < building.windowCols; col++) {
+                        const wx = building.x + 10 + col * windowWidth;
+                        const wy = building.y + 20 + row * windowSpacing;
+
+                        // Window is lit or dark
+                        const isLit = Math.random() < 0.6;
+
+                        if (isLit) {
+                            // Lit window with glow
+                            ctx.fillStyle = `rgba(255, 245, 200, ${0.6 + Math.random() * 0.3})`;
+                            ctx.fillRect(wx, wy, windowWidth - 5, windowHeight);
+
+                            // Window glow
+                            ctx.fillStyle = 'rgba(255, 245, 200, 0.2)';
+                            ctx.fillRect(wx - 2, wy - 2, windowWidth - 1, windowHeight + 4);
+                        } else {
+                            // Dark window
+                            ctx.fillStyle = 'rgba(20, 30, 40, 0.8)';
+                            ctx.fillRect(wx, wy, windowWidth - 5, windowHeight);
+                        }
+
+                        // Window frame
+                        ctx.strokeStyle = 'rgba(100, 100, 120, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(wx, wy, windowWidth - 5, windowHeight);
+                    }
+                }
+
+                // Rooftop detail
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(building.x, building.y, building.width, 5);
+            }
+        }
+
+        function drawPlayer() {
+            if (gameState.invincible && Math.floor(Date.now() / 100) % 2 === 0) {
+                return; // Flashing effect when invincible
+            }
+
+            ctx.save();
+            ctx.translate(gameState.player.x, gameState.player.y);
+
+            // Speed boost glow effect
+            if (gameState.player.speedBoostActive && Date.now() < gameState.player.speedBoostEndTime) {
+                const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = `rgba(230, 126, 34, ${pulse})`;
+
+                // Speed trail particles
+                if (Math.random() < 0.3) {
+                    gameState.particles.push({
+                        x: gameState.player.x + (Math.random() - 0.5) * 20,
+                        y: gameState.player.y + gameState.player.size / 2,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: Math.random() * 3 + 2,
+                        life: 15,
+                        color: '#f39c12'
+                    });
+                }
+            }
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(-gameState.player.size/2, gameState.player.size/2 + 5, gameState.player.size, 5);
+
+            if (gameState.player.design === 'orangutan') {
+                // Draw detailed orangutan character
+                const size = gameState.player.size;
+                const mainColor = '#CC6633';
+                const darkColor = '#8B4513';
+                const lightColor = '#D2691E';
+                const faceColor = '#CD853F';
+
+                // Left arm (extended long)
+                ctx.fillStyle = mainColor;
+                ctx.beginPath();
+                ctx.ellipse(-size/2 - 20, -size/6, 10, size/3.5, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+                // Hand
+                ctx.fillStyle = faceColor;
+                ctx.beginPath();
+                ctx.arc(-size/2 - 30, size/6, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Right arm (extended long)
+                ctx.fillStyle = mainColor;
+                ctx.beginPath();
+                ctx.ellipse(size/2 + 20, -size/6, 10, size/3.5, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                // Hand
+                ctx.fillStyle = faceColor;
+                ctx.beginPath();
+                ctx.arc(size/2 + 30, size/6, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Large body with fur shading
+                ctx.fillStyle = mainColor;
+                ctx.beginPath();
+                ctx.ellipse(0, size/8, size/2.2, size/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Chest (lighter)
+                ctx.fillStyle = lightColor;
+                ctx.beginPath();
+                ctx.ellipse(0, size/10, size/3, size/2.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Belly button detail
+                ctx.fillStyle = darkColor;
+                ctx.beginPath();
+                ctx.arc(0, size/4, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Legs (short and thick)
+                ctx.fillStyle = mainColor;
+                ctx.beginPath();
+                ctx.ellipse(-size/6, size/2, 8, size/3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(size/6, size/2, 8, size/3, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Feet
+                ctx.fillStyle = faceColor;
+                ctx.beginPath();
+                ctx.ellipse(-size/6, size/2 + 18, 10, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(size/6, size/2 + 18, 10, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Head - Main
+                ctx.fillStyle = mainColor;
+                ctx.beginPath();
+                ctx.arc(0, -size/3, size/2.8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Head fur/hair (darker top)
+                ctx.fillStyle = darkColor;
+                ctx.beginPath();
+                ctx.arc(0, -size/3 - size/8, size/2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Face (tan/beige)
+                ctx.fillStyle = faceColor;
+                ctx.beginPath();
+                ctx.ellipse(0, -size/3, size/2.2, size/2.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Nose area (darker)
+                ctx.fillStyle = darkColor;
+                ctx.beginPath();
+                ctx.ellipse(0, -size/3 + 2, size/5, size/6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Nostrils
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(-3, -size/3 + 3, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(3, -size/3 + 3, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eye sockets (darker ring)
+                ctx.fillStyle = darkColor;
+                ctx.beginPath();
+                ctx.arc(-8, -size/3 - 3, 5.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(8, -size/3 - 3, 5.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eyes - white
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(-8, -size/3 - 3, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(8, -size/3 - 3, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Pupils (dark, slightly off-center like a real ape)
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(-7, -size/3 - 4, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(9, -size/3 - 4, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eyebrow ridges
+                ctx.strokeStyle = darkColor;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(-8, -size/3 - 8, 6, 0.3, Math.PI - 0.3);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(8, -size/3 - 8, 6, 0.3, Math.PI - 0.3);
+                ctx.stroke();
+
+                // Mouth - lips
+                ctx.fillStyle = '#8B3A1A';
+                ctx.beginPath();
+                ctx.ellipse(0, -size/3 + 8, 6, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Mouth line
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-6, -size/3 + 8);
+                ctx.lineTo(6, -size/3 + 8);
+                ctx.stroke();
+
+                // Ears (large and prominent)
+                ctx.fillStyle = mainColor;
+                ctx.beginPath();
+                ctx.ellipse(-size/2.2, -size/2.8, size/5, size/3.5, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = faceColor;
+                ctx.beginPath();
+                ctx.ellipse(-size/2.2, -size/2.8, size/6.5, size/4.5, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = mainColor;
+                ctx.beginPath();
+                ctx.ellipse(size/2.2, -size/2.8, size/5, size/3.5, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = faceColor;
+                ctx.beginPath();
+                ctx.ellipse(size/2.2, -size/2.8, size/6.5, size/4.5, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Fur texture details on body (subtle shading)
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.lineWidth = 0.5;
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(angle) * size/3, Math.sin(angle) * size/3.5);
+                    ctx.lineTo(Math.cos(angle) * size/2.5, Math.sin(angle) * size/2.8);
+                    ctx.stroke();
+                }
+            } else {
+                // Body - handle rainbow skin
+                if (gameState.player.color === 'rainbow') {
+                    const gradient = ctx.createLinearGradient(-gameState.player.size/2, -gameState.player.size/2, gameState.player.size/2, gameState.player.size/2);
+                    const time = Date.now() / 1000;
+                    gradient.addColorStop(0, `hsl(${(time * 50) % 360}, 70%, 50%)`);
+                    gradient.addColorStop(0.25, `hsl(${(time * 50 + 90) % 360}, 70%, 50%)`);
+                    gradient.addColorStop(0.5, `hsl(${(time * 50 + 180) % 360}, 70%, 50%)`);
+                    gradient.addColorStop(0.75, `hsl(${(time * 50 + 270) % 360}, 70%, 50%)`);
+                    gradient.addColorStop(1, `hsl(${(time * 50) % 360}, 70%, 50%)`);
+                    ctx.fillStyle = gradient;
+                } else {
+                    ctx.fillStyle = gameState.player.color;
+                }
+                ctx.fillRect(-gameState.player.size/2, -gameState.player.size/2, gameState.player.size, gameState.player.size);
+
+                // Eyes
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(-10, -10, 8, 8);
+                ctx.fillRect(2, -10, 8, 8);
+
+                ctx.fillStyle = gameState.player.eyeColor;
+                ctx.fillRect(-8, -8, 4, 4);
+                ctx.fillRect(4, -8, 4, 4);
+            }
+
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+
+        function drawMonster() {
+            ctx.save();
+            ctx.translate(gameState.monster.x, gameState.monster.y);
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.fillRect(-gameState.monster.size/2, gameState.monster.size/2 + 5, gameState.monster.size, 8);
+
+            // Body
+            ctx.fillStyle = gameState.monster.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, gameState.monster.size/2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Spikes
+            ctx.fillStyle = '#8B0000';
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(angle) * 15, Math.sin(angle) * 15);
+                ctx.lineTo(Math.cos(angle) * 30, Math.sin(angle) * 30);
+                ctx.lineTo(Math.cos(angle + 0.4) * 15, Math.sin(angle + 0.4) * 15);
+                ctx.fill();
+            }
+
+            // Eyes
+            const eyeAngle = Math.atan2(
+                gameState.player.y - gameState.monster.y,
+                gameState.player.x - gameState.monster.x
+            );
+
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(-8, -5, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(8, -5, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(-8 + Math.cos(eyeAngle) * 2, -5 + Math.sin(eyeAngle) * 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(8 + Math.cos(eyeAngle) * 2, -5 + Math.sin(eyeAngle) * 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Mouth
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 5, 12, 0, Math.PI);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawObstacles() {
+            for (let obs of gameState.obstacles) {
+                const x = obs.lane * GRID_SIZE + GRID_SIZE / 2;
+                const y = obs.y;
+
+                ctx.save();
+                ctx.translate(x, y);
+
+                ctx.fillStyle = obs.color;
+
+                if (obs.type === 'car') {
+                    // Car body
+                    ctx.fillRect(-35, -20, 70, 40);
+
+                    // Windows
+                    ctx.fillStyle = '#34495e';
+                    ctx.fillRect(-25, -15, 20, 10);
+                    ctx.fillRect(5, -15, 20, 10);
+
+                    // Headlights
+                    ctx.fillStyle = '#f1c40f';
+                    ctx.beginPath();
+                    ctx.arc(-30, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Wheels
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(-30, -22, 10, 5);
+                    ctx.fillRect(-30, 17, 10, 5);
+                    ctx.fillRect(20, -22, 10, 5);
+                    ctx.fillRect(20, 17, 10, 5);
+                } else if (obs.type === 'barrier') {
+                    // Barrier/Cone
+                    ctx.fillStyle = obs.color;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -20);
+                    ctx.lineTo(-15, 20);
+                    ctx.lineTo(15, 20);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Stripes
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(-10, -5, 20, 5);
+                    ctx.fillRect(-10, 5, 20, 5);
+                } else if (obs.type === 'hole') {
+                    // Hole in the ground
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(-40, -30, 80, 60);
+
+                    // Hole edge shadow (to give depth)
+                    const gradient = ctx.createRadialGradient(0, 0, 10, 0, 0, 40);
+                    gradient.addColorStop(0, '#000');
+                    gradient.addColorStop(0.7, '#1a1a1a');
+                    gradient.addColorStop(1, '#2c3e50');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(-40, -30, 80, 60);
+
+                    // Warning stripes around edge
+                    ctx.strokeStyle = '#f1c40f';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(-40, -30, 80, 60);
+                    ctx.setLineDash([]);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        function drawParticles() {
+            for (let p of gameState.particles) {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawBullets() {
+            for (let bullet of gameState.bullets) {
+                ctx.save();
+                ctx.translate(bullet.x, bullet.y);
+
+                // Bullet trail
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+                ctx.fillRect(-3, 0, 6, 15);
+
+                // Bullet head
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.arc(0, 0, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Glow effect
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#ffd700';
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(0, 0, 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                ctx.restore();
+            }
+        }
+
+        function drawGunPickups() {
+            for (let gun of gameState.gunPickups) {
+                ctx.save();
+                ctx.translate(gun.x, gun.y);
+
+                // Ground shadow (to show it's on the ground)
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.ellipse(0, 20, 25, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Floating animation (slight)
+                const float = Math.sin(Date.now() / 200 + gun.lane) * 3;
+
+                // Gun body
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillRect(-15, -8 + float, 30, 12);
+
+                // Gun barrel
+                ctx.fillStyle = '#34495e';
+                ctx.fillRect(10, -4 + float, 15, 4);
+
+                // Gun grip
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(-15, 2 + float, 10, 10);
+
+                // Ammo count badge
+                ctx.fillStyle = '#2ecc71';
+                ctx.beginPath();
+                ctx.arc(5, -15 + float, 12, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('+' + gun.ammo, 5, -15 + float);
+
+                // Glow effect (brighter to make it more visible)
+                ctx.strokeStyle = 'rgba(46, 204, 113, 0.7)';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(0, float, 28, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Pulsing outer glow
+                const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+                ctx.strokeStyle = `rgba(46, 204, 113, ${pulse * 0.4})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, float, 35, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        function drawSpeedBoosters() {
+            for (let booster of gameState.speedBoosters) {
+                ctx.save();
+                ctx.translate(booster.x, booster.y);
+
+                // Ground shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.ellipse(0, 20, 25, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Floating animation
+                const float = Math.sin(Date.now() / 150 + booster.lane) * 5;
+
+                // Lightning bolt icon
+                ctx.fillStyle = '#e67e22';
+                ctx.beginPath();
+                ctx.moveTo(-8, -20 + float);
+                ctx.lineTo(2, -5 + float);
+                ctx.lineTo(-3, -5 + float);
+                ctx.lineTo(8, 15 + float);
+                ctx.lineTo(-2, 0 + float);
+                ctx.lineTo(3, 0 + float);
+                ctx.closePath();
+                ctx.fill();
+
+                // Glow effect
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#e67e22';
+                ctx.fillStyle = '#f39c12';
+                ctx.beginPath();
+                ctx.moveTo(-8, -20 + float);
+                ctx.lineTo(2, -5 + float);
+                ctx.lineTo(-3, -5 + float);
+                ctx.lineTo(8, 15 + float);
+                ctx.lineTo(-2, 0 + float);
+                ctx.lineTo(3, 0 + float);
+                ctx.closePath();
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Pulsing outer glow
+                const pulse = Math.sin(Date.now() / 200) * 0.4 + 0.6;
+                ctx.strokeStyle = `rgba(230, 126, 34, ${pulse * 0.8})`;
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.arc(0, float, 30, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Speed text
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('2.5x', 0, -35 + float);
+
+                ctx.restore();
+            }
+        }
+
+        function draw() {
+            // Clear canvas with city background
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw buildings (background)
+            drawBuildings();
+
+            // Draw grid
+            drawGrid();
+
+            // Draw game objects
+            drawGunPickups();
+            drawSpeedBoosters();
+            drawObstacles();
+            drawBullets();
+            drawPlayer();
+            drawMonster();
+            drawParticles();
+        }
+
+        function gameLoop() {
+            updateGame();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize and start game
+        initBuildings();
+        document.getElementById('currentSkin').textContent = SKINS[selectedSkinId].name;
+        gameLoop();
+    </script>
+</body>
+</html>

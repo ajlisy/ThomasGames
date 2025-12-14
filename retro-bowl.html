@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Bowl - Football Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 4 / 3;
+            background: #1e3c72;
+            border: 5px solid #ff6b35;
+            border-radius: 10px;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.4);
+        }
+
+        .hud-item {
+            background: rgba(0,0,0,0.5);
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: 2px solid #ff6b35;
+        }
+
+        #gameOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+            color: white;
+            text-align: center;
+        }
+
+        #gameOverlay h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ff6b35;
+        }
+
+        #gameOverlay p {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #gameOverlay button {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 18px;
+            background: #ff6b35;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #gameOverlay button:hover {
+            background: #ff5522;
+            transform: scale(1.05);
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .control-btn {
+            padding: 12px 25px;
+            font-size: 14px;
+            font-weight: bold;
+            background: #ff6b35;
+            color: white;
+            border: 2px solid white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: none;
+        }
+
+        .control-btn:active {
+            background: #ff5522;
+            transform: scale(0.95);
+        }
+
+        #dragIndicator {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 3px solid #ff6b35;
+            border-radius: 50%;
+            display: none;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        #dragArrow {
+            position: absolute;
+            display: none;
+            z-index: 14;
+            pointer-events: none;
+        }
+
+        #backButton {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 30px;
+            font-size: 16px;
+            background: #ff6b35;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 20;
+        }
+
+        #backButton:hover {
+            background: #ff5522;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="dragIndicator"></div>
+        <div id="dragArrow"></div>
+
+        <div id="hud">
+            <div class="hud-item">
+                <span id="homeTeam">HOME</span> <span id="homeScore">0</span>
+            </div>
+            <div class="hud-item">
+                <span id="quarter">1st</span> &nbsp; <span id="down">1st & 10</span>
+            </div>
+            <div class="hud-item">
+                <span id="awayTeam">AWAY</span> <span id="awayScore">0</span>
+            </div>
+        </div>
+
+        <div id="controls">
+            <button class="control-btn" id="passBtn">📤 PASS</button>
+            <button class="control-btn" id="runBtn">🏃 RUN</button>
+            <button class="control-btn" id="kickBtn">🦶 KICK</button>
+        </div>
+
+        <div id="gameOverlay">
+            <h2 id="overlayTitle">GAME OVER</h2>
+            <p id="overlayText">Home: <span id="overlayHome">0</span> - Away: <span id="overlayAway">0</span></p>
+            <button onclick="location.reload()">Play Again</button>
+        </div>
+    </div>
+
+    <button id="backButton" onclick="window.location.href='index.html'">Back to Menu</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const gameState = {
+            homeScore: 0,
+            awayScore: 0,
+            quarter: 1,
+            down: 1,
+            yardsToGo: 10,
+            yardLine: 20,
+            possession: 'home', // home or away
+            gameOver: false,
+            gameMode: 'offense', // offense or defense
+            ballCarrier: null,
+            players: [],
+            ball: {
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                carried: true,
+                carrier: null
+            },
+            keys: {},
+            drag: {
+                active: false,
+                startX: 0,
+                startY: 0,
+                currentX: 0,
+                currentY: 0,
+                passMode: false,
+                targetReceiver: null
+            }
+        };
+
+        const FIELD_WIDTH = 1200;
+        const FIELD_HEIGHT = 500;
+        const PLAYER_SIZE = 10;
+
+        // Create players
+        function initGame() {
+            gameState.players = [];
+
+            // Home offensive team (top)
+            const homeOffense = [
+                { x: 200, y: 150, team: 'home', role: 'qb', vx: 0, vy: 0, speed: 4 },
+                { x: 250, y: 120, team: 'home', role: 'wr', vx: 0, vy: 0, speed: 5 },
+                { x: 250, y: 180, team: 'home', role: 'wr', vx: 0, vy: 0, speed: 5 },
+                { x: 180, y: 150, team: 'home', role: 'rb', vx: 0, vy: 0, speed: 4 }
+            ];
+
+            // Away defensive team (bottom)
+            const awayDefense = [
+                // Defensive Ends (rush the QB from sides)
+                { x: 180, y: 320, team: 'away', role: 'de', vx: 0, vy: 0, speed: 5 },
+                { x: 320, y: 320, team: 'away', role: 'de', vx: 0, vy: 0, speed: 5 },
+                // Cornerbacks (cover the wide receivers)
+                { x: 240, y: 270, team: 'away', role: 'cb', vx: 0, vy: 0, speed: 5.5 },
+                { x: 260, y: 270, team: 'away', role: 'cb', vx: 0, vy: 0, speed: 5.5 }
+            ];
+
+            gameState.players = [...homeOffense, ...awayDefense];
+            gameState.ballCarrier = gameState.players[0];
+            gameState.ball.x = gameState.ballCarrier.x;
+            gameState.ball.y = gameState.ballCarrier.y;
+            gameState.ball.carried = true;
+        }
+
+        function updatePlayers() {
+            gameState.players.forEach(player => {
+                // Offensive AI
+                if (player.team === 'home' && player.role !== 'qb') {
+                    // Receivers run routes
+                    if (player.role === 'wr') {
+                        player.x += Math.random() * 2 - 1;
+                        player.y += Math.random() * 0.5 - 0.25;
+                    }
+                }
+
+                // Defensive AI
+                if (player.team === 'away') {
+                    const qb = gameState.players[0];
+                    const dx = qb.x - player.x;
+                    const dy = qb.y - player.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (player.role === 'de') {
+                        // Defensive Ends rush the QB aggressively
+                        if (dist > 0) {
+                            player.x += (dx / dist) * player.speed * 0.7;
+                            player.y += (dy / dist) * player.speed * 0.7;
+                        }
+                    } else if (player.role === 'cb') {
+                        // Cornerbacks cover the wide receivers
+                        const receivers = gameState.players.filter(p => p.team === 'home' && p.role === 'wr');
+                        let targetReceiver = null;
+                        let closestDist = Infinity;
+
+                        receivers.forEach(receiver => {
+                            const rDist = Math.sqrt(Math.pow(receiver.x - player.x, 2) + Math.pow(receiver.y - player.y, 2));
+                            if (rDist < closestDist) {
+                                closestDist = rDist;
+                                targetReceiver = receiver;
+                            }
+                        });
+
+                        if (targetReceiver) {
+                            const rDx = targetReceiver.x - player.x;
+                            const rDy = targetReceiver.y - player.y;
+                            const rDist = Math.sqrt(rDx * rDx + rDy * rDy);
+                            if (rDist > 0) {
+                                // Cover assigned receiver
+                                player.x += (rDx / rDist) * player.speed * 0.6;
+                                player.y += (rDy / rDist) * player.speed * 0.6;
+                            }
+                        }
+                    }
+                }
+
+                // Clamp to field
+                player.x = Math.max(0, Math.min(FIELD_WIDTH, player.x));
+                player.y = Math.max(100, Math.min(FIELD_HEIGHT, player.y));
+
+                // Apply velocity
+                player.x += player.vx;
+                player.y += player.vy;
+                player.vx *= 0.9;
+                player.vy *= 0.9;
+            });
+
+            // Handle drag-based QB movement
+            if (gameState.drag.active && !gameState.drag.passMode && gameState.ballCarrier && gameState.ballCarrier.role === 'qb') {
+                const deltaX = gameState.drag.currentX - gameState.drag.startX;
+                const deltaY = gameState.drag.currentY - gameState.drag.startY;
+                const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                if (dist > 10) {
+                    // Move QB in drag direction
+                    gameState.ballCarrier.vx = (deltaX / dist) * 3;
+                    gameState.ballCarrier.vy = (deltaY / dist) * 3;
+                }
+            }
+
+            // Update ball
+            if (gameState.ballCarrier && gameState.ball.carried) {
+                gameState.ball.x = gameState.ballCarrier.x;
+                gameState.ball.y = gameState.ballCarrier.y;
+            } else if (!gameState.ball.carried) {
+                gameState.ball.x += gameState.ball.vx;
+                gameState.ball.y += gameState.ball.vy;
+                gameState.ball.vy += 0.2; // gravity
+                gameState.ball.vx *= 0.99;
+
+                // Ball caught
+                gameState.players.forEach(player => {
+                    if (player.team === 'home') {
+                        const dx = player.x - gameState.ball.x;
+                        const dy = player.y - gameState.ball.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 25) {
+                            gameState.ballCarrier = player;
+                            gameState.ball.carried = true;
+                            gameState.ball.vx = 0;
+                            gameState.ball.vy = 0;
+                        }
+                    }
+                });
+
+                // Ball out of bounds or too low
+                if (gameState.ball.y > FIELD_HEIGHT + 50 || gameState.ball.x < 0 || gameState.ball.x > FIELD_WIDTH) {
+                    incompletion();
+                }
+            }
+
+            // Tackle detection
+            if (gameState.ballCarrier && gameState.ballCarrier.team === 'home') {
+                gameState.players.forEach(defender => {
+                    if (defender.team === 'away') {
+                        const dx = gameState.ballCarrier.x - defender.x;
+                        const dy = gameState.ballCarrier.y - defender.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 30) {
+                            tackle();
+                        }
+                    }
+                });
+            }
+        }
+
+        function passToReceiver(receiver) {
+            if (!gameState.ballCarrier || gameState.ballCarrier.role !== 'qb') return;
+
+            const dx = receiver.x - gameState.ballCarrier.x;
+            const dy = receiver.y - gameState.ballCarrier.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = 6;
+
+            gameState.ball.vx = (dx / dist) * speed;
+            gameState.ball.vy = (dy / dist) * speed - 2; // Arc
+            gameState.ball.carried = false;
+            gameState.ballCarrier = null;
+
+            // 70% completion rate
+            if (Math.random() > 0.3) {
+                advancePlay(Math.random() * 20 + 10);
+            } else {
+                incompletion();
+            }
+        }
+
+        function findNearestReceiver(targetX, targetY) {
+            let nearest = null;
+            let nearestDist = Infinity;
+
+            gameState.players.forEach(player => {
+                if (player.team === 'home' && player.role !== 'qb') {
+                    const dx = player.x - targetX;
+                    const dy = player.y - targetY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = player;
+                    }
+                }
+            });
+
+            return nearest;
+        }
+
+        function advancePlay(yards) {
+            gameState.yardLine = Math.min(gameState.yardLine + yards, 100);
+            gameState.yardsToGo -= yards;
+
+            if (gameState.yardLine >= 100) {
+                // Touchdown
+                gameState.homeScore += 7;
+                resetDrive();
+            } else if (gameState.yardsToGo <= 0) {
+                // First down
+                gameState.down = 1;
+                gameState.yardsToGo = 10;
+            } else {
+                gameState.down++;
+                if (gameState.down > 4) {
+                    turnover();
+                }
+            }
+        }
+
+        function incompletion() {
+            gameState.down++;
+            gameState.ballCarrier = gameState.players[0]; // QB
+            gameState.ball.carried = true;
+
+            if (gameState.down > 4) {
+                turnover();
+            }
+        }
+
+        function tackle() {
+            gameState.down++;
+            gameState.ballCarrier = gameState.players[0]; // QB
+            gameState.ball.carried = true;
+
+            if (gameState.down > 4) {
+                turnover();
+            }
+        }
+
+        function turnover() {
+            gameState.possession = gameState.possession === 'home' ? 'away' : 'home';
+            resetDown();
+        }
+
+        function resetDown() {
+            gameState.down = 1;
+            gameState.yardsToGo = 10;
+            if (gameState.possession === 'away') {
+                gameState.awayScore += Math.floor(Math.random() * 3) + 1;
+                gameState.possession = 'home';
+                gameState.yardLine = 20;
+            }
+            gameState.ballCarrier = gameState.players[0];
+            gameState.ball.x = gameState.ballCarrier.x;
+            gameState.ball.y = gameState.ballCarrier.y;
+            gameState.ball.carried = true;
+        }
+
+        function resetDrive() {
+            gameState.yardLine = 20;
+            gameState.down = 1;
+            gameState.yardsToGo = 10;
+            gameState.possession = 'away';
+            gameState.awayScore += Math.floor(Math.random() * 3) + 1;
+            if (gameState.quarter >= 4 && gameState.awayScore >= gameState.homeScore) {
+                endGame();
+            } else {
+                gameState.possession = 'home';
+            }
+            gameState.ballCarrier = gameState.players[0];
+            gameState.ball.x = gameState.ballCarrier.x;
+            gameState.ball.y = gameState.ballCarrier.y;
+            gameState.ball.carried = true;
+        }
+
+        function endGame() {
+            gameState.gameOver = true;
+            document.getElementById('gameOverlay').style.display = 'flex';
+            document.getElementById('overlayHome').textContent = gameState.homeScore;
+            document.getElementById('overlayAway').textContent = gameState.awayScore;
+            if (gameState.homeScore > gameState.awayScore) {
+                document.getElementById('overlayTitle').textContent = 'YOU WIN!';
+            } else {
+                document.getElementById('overlayTitle').textContent = 'YOU LOSE!';
+            }
+        }
+
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Field
+            ctx.fillStyle = '#2d5016';
+            ctx.fillRect(0, 100, canvas.width, FIELD_HEIGHT);
+
+            // Yard lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 1;
+            const yardWidth = (canvas.width - 0) / 100;
+            for (let i = 0; i <= 100; i += 10) {
+                const x = (i / 100) * canvas.width;
+                ctx.beginPath();
+                ctx.moveTo(x, 100);
+                ctx.lineTo(x, 100 + FIELD_HEIGHT);
+                ctx.stroke();
+
+                if (i % 20 === 0) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(i === 0 ? '0' : i === 100 ? 'END' : i, x, 90);
+                }
+            }
+
+            // Goal lines
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, 100);
+            ctx.lineTo(0, 100 + FIELD_HEIGHT);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(canvas.width - 1, 100);
+            ctx.lineTo(canvas.width - 1, 100 + FIELD_HEIGHT);
+            ctx.stroke();
+
+            // Draw players
+            gameState.players.forEach(player => {
+                const screenX = (gameState.yardLine / 100) * canvas.width + (player.x - gameState.players[0].x) * 2;
+                const screenY = 100 + (player.y / FIELD_HEIGHT) * FIELD_HEIGHT;
+                const isQB = player.role === 'qb';
+
+                // Draw helmet
+                let helmetColor = player.team === 'home' ? '#ff8c00' : '#003d82';
+
+                // Different helmet colors for defensive positions
+                if (player.team === 'away') {
+                    if (player.role === 'de') {
+                        helmetColor = '#cc0000'; // Red for Defensive Ends
+                    } else if (player.role === 'cb') {
+                        helmetColor = '#1a1a4d'; // Darker blue for Cornerbacks
+                    }
+                }
+
+                ctx.fillStyle = helmetColor;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY - 10, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw helmet stripe
+                ctx.strokeStyle = player.team === 'home' ? '#000' : '#fff';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(screenX, screenY - 16);
+                ctx.lineTo(screenX, screenY - 4);
+                ctx.stroke();
+
+                // Special markings for defensive ends
+                if (player.role === 'de') {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(screenX - 4, screenY - 10, 2, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(screenX + 4, screenY - 10, 2, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Draw facemask
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY - 10, 7, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Draw body/jersey
+                let jerseyColor = player.team === 'home' ? '#ff6b35' : '#1e3c72';
+                if (player.team === 'away') {
+                    if (player.role === 'de') {
+                        jerseyColor = '#dd3333';
+                    } else if (player.role === 'cb') {
+                        jerseyColor = '#0a1f5c';
+                    }
+                }
+
+                ctx.fillStyle = jerseyColor;
+                ctx.fillRect(screenX - 6, screenY - 3, 12, 14);
+
+                // Draw jersey number
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 7px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const playerNum = gameState.players.indexOf(player);
+                ctx.fillText(playerNum < 10 ? playerNum : playerNum % 10, screenX, screenY + 3);
+
+                // Draw legs
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(screenX - 3, screenY + 11);
+                ctx.lineTo(screenX - 3, screenY + 18);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(screenX + 3, screenY + 11);
+                ctx.lineTo(screenX + 3, screenY + 18);
+                ctx.stroke();
+
+                // Draw arms
+                ctx.strokeStyle = '#ffb380';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(screenX - 6, screenY);
+                ctx.lineTo(screenX - 11, screenY + 2);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(screenX + 6, screenY);
+                ctx.lineTo(screenX + 11, screenY + 2);
+                ctx.stroke();
+
+                // Position label for defensive players
+                if (player.team === 'away') {
+                    ctx.fillStyle = 'white';
+                    ctx.font = '7px Arial';
+                    ctx.textAlign = 'center';
+                    const posLabel = player.role === 'de' ? 'DE' : player.role === 'cb' ? 'CB' : '';
+                    if (posLabel) {
+                        ctx.fillText(posLabel, screenX, screenY - 17);
+                    }
+                }
+
+                // Highlight QB
+                if (isQB) {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, 15, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
+
+            // Draw ball
+            if (gameState.ball.carried) {
+                const qbScreenX = (gameState.yardLine / 100) * canvas.width;
+                const qbScreenY = 100 + (gameState.ballCarrier.y / FIELD_HEIGHT) * FIELD_HEIGHT;
+
+                // Draw football in QB's hands
+                ctx.save();
+                ctx.translate(qbScreenX + 4, qbScreenY - 5);
+                ctx.rotate(0.3);
+                ctx.fillStyle = '#8B4513';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 6, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-4, 0);
+                ctx.lineTo(4, 0);
+                ctx.stroke();
+                ctx.restore();
+            } else {
+                const ballScreenX = (gameState.yardLine / 100) * canvas.width + (gameState.ball.x - gameState.players[0].x) * 2;
+                const ballScreenY = 100 + (gameState.ball.y / FIELD_HEIGHT) * FIELD_HEIGHT;
+
+                // Draw flying football with spin
+                ctx.save();
+                ctx.translate(ballScreenX, ballScreenY);
+                const spinAngle = Date.now() * 0.005;
+                ctx.rotate(spinAngle);
+
+                ctx.fillStyle = '#8B4513';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 7, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-5, 0);
+                ctx.lineTo(5, 0);
+                ctx.stroke();
+
+                // Draw laces
+                for (let i = -3; i <= 3; i += 2) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.arc(i, 0, 1, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+
+                // Draw shadow/trail
+                ctx.strokeStyle = 'rgba(255, 107, 53, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 2]);
+                ctx.beginPath();
+                ctx.moveTo(ballScreenX - gameState.ball.vx * 5, ballScreenY - gameState.ball.vy * 5);
+                ctx.lineTo(ballScreenX, ballScreenY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Draw drag indicator
+            if (gameState.drag.active) {
+                const deltaX = gameState.drag.currentX - gameState.drag.startX;
+                const deltaY = gameState.drag.currentY - gameState.drag.startY;
+                const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                // Draw direction indicator circle
+                ctx.strokeStyle = gameState.drag.passMode ? '#ff3333' : '#ff6b35';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(gameState.drag.startX, gameState.drag.startY, 40, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Draw direction arrow
+                if (dist > 10) {
+                    const angle = Math.atan2(deltaY, deltaX);
+                    const arrowLen = Math.min(dist, 60);
+                    const endX = gameState.drag.startX + Math.cos(angle) * arrowLen;
+                    const endY = gameState.drag.startY + Math.sin(angle) * arrowLen;
+
+                    ctx.strokeStyle = gameState.drag.passMode ? '#ff3333' : '#ff6b35';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(gameState.drag.startX, gameState.drag.startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+
+                    // Draw arrowhead
+                    const headlen = 15;
+                    ctx.beginPath();
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+                    ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+                    ctx.closePath();
+                    ctx.fillStyle = gameState.drag.passMode ? '#ff3333' : '#ff6b35';
+                    ctx.fill();
+                }
+
+                // Show pass mode text and target receiver highlight
+                if (gameState.drag.passMode) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('PASS', gameState.drag.currentX, gameState.drag.currentY - 20);
+
+                    // Highlight target receiver
+                    if (gameState.drag.targetReceiver) {
+                        const targetScreenX = (gameState.yardLine / 100) * canvas.width + (gameState.drag.targetReceiver.x - gameState.players[0].x) * 2;
+                        const targetScreenY = 100 + (gameState.drag.targetReceiver.y / FIELD_HEIGHT) * FIELD_HEIGHT;
+
+                        // Draw targeting circle around receiver
+                        ctx.strokeStyle = '#ffff00';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(targetScreenX, targetScreenY, 20, 0, Math.PI * 2);
+                        ctx.stroke();
+
+                        // Draw line from QB to target
+                        ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+                        ctx.moveTo(gameState.drag.startX, gameState.drag.startY);
+                        ctx.lineTo(targetScreenX, targetScreenY);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                }
+            }
+
+            // Update HUD
+            document.getElementById('homeScore').textContent = gameState.homeScore;
+            document.getElementById('awayScore').textContent = gameState.awayScore;
+            document.getElementById('down').textContent = `${gameState.down === 1 ? '1st' : gameState.down === 2 ? '2nd' : gameState.down === 3 ? '3rd' : '4th'} & ${gameState.yardsToGo}`;
+        }
+
+        function gameLoop() {
+            if (!gameState.gameOver) {
+                updatePlayers();
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Drag controls
+        let touchActive = false;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            gameState.drag.active = true;
+            gameState.drag.startX = x;
+            gameState.drag.startY = y;
+            gameState.drag.currentX = x;
+            gameState.drag.currentY = y;
+            gameState.drag.passMode = false;
+            gameState.drag.targetReceiver = null;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameState.drag.active) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            gameState.drag.currentX = x;
+            gameState.drag.currentY = y;
+
+            const deltaX = gameState.drag.currentX - gameState.drag.startX;
+            const deltaY = gameState.drag.currentY - gameState.drag.startY;
+            const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            // If dragging backwards (up), enter pass mode
+            if (deltaY < -50) {
+                gameState.drag.passMode = true;
+
+                // Find closest receiver to cursor
+                gameState.drag.targetReceiver = findNearestReceiver(
+                    (x / canvas.width) * FIELD_WIDTH,
+                    ((y - 100) / (canvas.height - 100)) * FIELD_HEIGHT + 100
+                );
+            } else {
+                gameState.drag.passMode = false;
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (!gameState.drag.active) return;
+
+            if (gameState.drag.passMode && gameState.drag.targetReceiver) {
+                // Execute pass to target receiver
+                passToReceiver(gameState.drag.targetReceiver);
+            }
+
+            gameState.drag.active = false;
+            gameState.drag.passMode = false;
+            gameState.drag.targetReceiver = null;
+
+            // Stop QB movement
+            if (gameState.ballCarrier && gameState.ballCarrier.role === 'qb') {
+                gameState.ballCarrier.vx = 0;
+                gameState.ballCarrier.vy = 0;
+            }
+        });
+
+        canvas.addEventListener('mouseleave', (e) => {
+            if (gameState.drag.active) {
+                gameState.drag.active = false;
+                gameState.drag.passMode = false;
+                gameState.drag.targetReceiver = null;
+
+                if (gameState.ballCarrier && gameState.ballCarrier.role === 'qb') {
+                    gameState.ballCarrier.vx = 0;
+                    gameState.ballCarrier.vy = 0;
+                }
+            }
+        });
+
+        // Touch controls
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            gameState.drag.active = true;
+            gameState.drag.startX = x;
+            gameState.drag.startY = y;
+            gameState.drag.currentX = x;
+            gameState.drag.currentY = y;
+            gameState.drag.passMode = false;
+            gameState.drag.targetReceiver = null;
+            touchActive = true;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (!touchActive) return;
+            e.preventDefault();
+
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            gameState.drag.currentX = x;
+            gameState.drag.currentY = y;
+
+            const deltaX = gameState.drag.currentX - gameState.drag.startX;
+            const deltaY = gameState.drag.currentY - gameState.drag.startY;
+            const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            // If dragging backwards (up), enter pass mode
+            if (deltaY < -50) {
+                gameState.drag.passMode = true;
+
+                // Find closest receiver to cursor
+                gameState.drag.targetReceiver = findNearestReceiver(
+                    (x / canvas.width) * FIELD_WIDTH,
+                    ((y - 100) / (canvas.height - 100)) * FIELD_HEIGHT + 100
+                );
+            } else {
+                gameState.drag.passMode = false;
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (!touchActive) return;
+            e.preventDefault();
+
+            if (gameState.drag.passMode && gameState.drag.targetReceiver) {
+                // Execute pass to target receiver
+                passToReceiver(gameState.drag.targetReceiver);
+            }
+
+            gameState.drag.active = false;
+            gameState.drag.passMode = false;
+            gameState.drag.targetReceiver = null;
+            touchActive = false;
+
+            // Stop QB movement
+            if (gameState.ballCarrier && gameState.ballCarrier.role === 'qb') {
+                gameState.ballCarrier.vx = 0;
+                gameState.ballCarrier.vy = 0;
+            }
+        });
+
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>

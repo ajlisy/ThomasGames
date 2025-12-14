@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Games Arcade</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+        }
+        .subtitle {
+            text-align: center;
+            color: #f0f0f0;
+            font-size: 18px;
+            margin-bottom: 50px;
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        .game-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .game-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        .game-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .game-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+        .game-description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .footer {
+            text-align: center;
+            color: #f0f0f0;
+            font-size: 14px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Classic Games Arcade</h1>
+        <p class="subtitle">Choose your game and have fun!</p>
+
+        <div class="games-grid">
+            <a href="pong.html" class="game-card">
+                <div class="game-icon">🏓</div>
+                <div class="game-title">Pong</div>
+                <div class="game-description">Classic paddle game. First to 5 points wins! Use W/E or arrows to move.</div>
+            </a>
+
+            <a href="snake.html" class="game-card">
+                <div class="game-icon">🐍</div>
+                <div class="game-title">Snake</div>
+                <div class="game-description">Eat food and grow longer without hitting walls or yourself!</div>
+            </a>
+
+            <a href="flappy-bird.html" class="game-card">
+                <div class="game-icon">🐦</div>
+                <div class="game-title">Flappy Bird</div>
+                <div class="game-description">Tap to fly through pipes. How far can you go?</div>
+            </a>
+
+            <a href="rooftop-snipers.html" class="game-card">
+                <div class="game-icon">🎯</div>
+                <div class="game-title">Rooftop Snipers</div>
+                <div class="game-description">2-player rooftop battle! Jump and shoot to knock your opponent off!</div>
+            </a>
+
+            <a href="chess.html" class="game-card">
+                <div class="game-icon">♟️</div>
+                <div class="game-title">Chess</div>
+                <div class="game-description">Classic strategy game. Play chess with a friend on the same device!</div>
+            </a>
+
+            <a href="city-runner.html" class="game-card">
+                <div class="game-icon">🏃</div>
+                <div class="game-title">City Runner</div>
+                <div class="game-description">Escape from the monster! Use WASD to dodge obstacles and survive in the city!</div>
+            </a>
+
+            <a href="retro-football.html" class="game-card">
+                <div class="game-icon">🏈</div>
+                <div class="game-title">Retro Football</div>
+                <div class="game-description">Build your NFL dream team! Pick real players and lead them to victory!</div>
+            </a>
+
+            <a href="bedtime-berzerk.html" class="game-card">
+                <div class="game-icon">🛏️</div>
+                <div class="game-title">Bedtime Berzerk</div>
+                <div class="game-description">Collect pillows, your Stanley cup, and weights while avoiding monsters in the dark!</div>
+            </a>
+        </div>
+
+        <div class="footer">
+            All games work in any modern browser. No downloads required!
+        </div>
+    </div>
+</body>
+</html>
