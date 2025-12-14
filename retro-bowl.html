@@ -228,6 +228,7 @@
             down: 1,
             yardsToGo: 10,
             yardLine: 20,
+            playStartX: 200, // Track starting X position to calculate yards gained
             possession: 'home', // home or away
             gameOver: false,
             gameMode: 'offense', // offense or defense
@@ -284,6 +285,7 @@
             gameState.ball.x = gameState.ballCarrier.x;
             gameState.ball.y = gameState.ballCarrier.y;
             gameState.ball.carried = true;
+            gameState.playStartX = gameState.ballCarrier.x;
         }
 
         function updatePlayers() {
@@ -404,6 +406,15 @@
                         }
                     }
                 });
+
+                // Live touchdown detection - check if ball carrier crossed goal line
+                const yardsGained = (gameState.ballCarrier.x - gameState.playStartX) / FIELD_WIDTH * 100;
+                const currentYardLine = gameState.yardLine + yardsGained;
+                if (currentYardLine >= 100) {
+                    // TOUCHDOWN!
+                    gameState.homeScore += 7;
+                    resetDrive();
+                }
             }
         }
 
@@ -420,9 +431,10 @@
             gameState.ball.carried = false;
             gameState.ballCarrier = null;
 
-            // 70% completion rate
+            // 70% completion rate - calculate actual yards based on receiver position
             if (Math.random() > 0.3) {
-                advancePlay(Math.random() * 20 + 10);
+                const yardsGained = (receiver.x - gameState.playStartX) / FIELD_WIDTH * 100;
+                advancePlay(yardsGained);
             } else {
                 incompletion();
             }
@@ -459,32 +471,82 @@
                 // First down
                 gameState.down = 1;
                 gameState.yardsToGo = 10;
+                resetPlayPositions();
             } else {
                 gameState.down++;
                 if (gameState.down > 4) {
                     turnover();
+                } else {
+                    resetPlayPositions();
                 }
             }
         }
 
         function incompletion() {
             gameState.down++;
-            gameState.ballCarrier = gameState.players[0]; // QB
-            gameState.ball.carried = true;
-
             if (gameState.down > 4) {
                 turnover();
+            } else {
+                resetPlayPositions();
             }
         }
 
         function tackle() {
-            gameState.down++;
-            gameState.ballCarrier = gameState.players[0]; // QB
-            gameState.ball.carried = true;
+            // Calculate yards gained based on where the ball carrier was tackled
+            const yardsGained = (gameState.ballCarrier.x - gameState.playStartX) / FIELD_WIDTH * 100;
 
-            if (gameState.down > 4) {
-                turnover();
+            // Update yard line and yards to go
+            gameState.yardLine = Math.max(0, Math.min(100, gameState.yardLine + yardsGained));
+            gameState.yardsToGo -= yardsGained;
+
+            // Check for first down
+            if (gameState.yardsToGo <= 0) {
+                gameState.down = 1;
+                gameState.yardsToGo = 10;
+            } else {
+                gameState.down++;
+                if (gameState.down > 4) {
+                    turnover();
+                    return;
+                }
             }
+
+            // Reset for next play
+            resetPlayPositions();
+        }
+
+        function resetPlayPositions() {
+            // Reset player positions for next play
+            gameState.players[0].x = 200; // QB
+            gameState.players[0].y = 150;
+            gameState.players[1].x = 250; // WR1
+            gameState.players[1].y = 120;
+            gameState.players[2].x = 250; // WR2
+            gameState.players[2].y = 180;
+            gameState.players[3].x = 180; // RB
+            gameState.players[3].y = 150;
+
+            // Reset defense positions
+            gameState.players[4].x = 180; // DE1
+            gameState.players[4].y = 320;
+            gameState.players[5].x = 320; // DE2
+            gameState.players[5].y = 320;
+            gameState.players[6].x = 240; // CB1
+            gameState.players[6].y = 270;
+            gameState.players[7].x = 260; // CB2
+            gameState.players[7].y = 270;
+
+            // Reset velocities
+            gameState.players.forEach(p => {
+                p.vx = 0;
+                p.vy = 0;
+            });
+
+            gameState.ballCarrier = gameState.players[0]; // QB
+            gameState.ball.x = gameState.ballCarrier.x;
+            gameState.ball.y = gameState.ballCarrier.y;
+            gameState.ball.carried = true;
+            gameState.playStartX = gameState.ballCarrier.x;
         }
 
         function turnover() {
@@ -500,10 +562,7 @@
                 gameState.possession = 'home';
                 gameState.yardLine = 20;
             }
-            gameState.ballCarrier = gameState.players[0];
-            gameState.ball.x = gameState.ballCarrier.x;
-            gameState.ball.y = gameState.ballCarrier.y;
-            gameState.ball.carried = true;
+            resetPlayPositions();
         }
 
         function resetDrive() {
@@ -517,10 +576,7 @@
             } else {
                 gameState.possession = 'home';
             }
-            gameState.ballCarrier = gameState.players[0];
-            gameState.ball.x = gameState.ballCarrier.x;
-            gameState.ball.y = gameState.ballCarrier.y;
-            gameState.ball.carried = true;
+            resetPlayPositions();
         }
 
         function endGame() {

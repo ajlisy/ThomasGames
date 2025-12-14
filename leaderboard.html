@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboards - Classic Games Arcade</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #fff;
+            font-size: 36px;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+        }
+        .back-link {
+            color: #f0f0f0;
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            transition: background 0.2s;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .game-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        .game-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .game-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        .game-btn.active {
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .leaderboard-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .game-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+        .game-icon {
+            font-size: 48px;
+        }
+        .game-info h2 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .game-info p {
+            font-size: 14px;
+            color: #666;
+        }
+        .leaderboard-table {
+            width: 100%;
+        }
+        .leaderboard-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 10px;
+            transition: all 0.2s;
+        }
+        .leaderboard-row:hover {
+            transform: translateX(5px);
+        }
+        .rank-1 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+            color: #333;
+        }
+        .rank-2 {
+            background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+            color: #333;
+        }
+        .rank-3 {
+            background: linear-gradient(135deg, #cd7f32 0%, #daa06d 100%);
+            color: #fff;
+        }
+        .rank-other {
+            background: #f5f5f5;
+            color: #333;
+        }
+        .rank {
+            font-size: 24px;
+            min-width: 50px;
+            text-align: center;
+        }
+        .player-name {
+            flex: 1;
+            font-size: 18px;
+            font-weight: bold;
+            margin-left: 15px;
+        }
+        .score {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .rank-1 .score,
+        .rank-2 .score,
+        .rank-3 .score {
+            color: inherit;
+        }
+        .no-scores {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            font-style: italic;
+            font-size: 18px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        .trophy-icon {
+            display: inline-block;
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">Back to Arcade</a>
+            <h1>Leaderboards</h1>
+        </header>
+
+        <div class="game-selector" id="gameSelector">
+            <!-- Buttons will be generated by JavaScript -->
+        </div>
+
+        <div class="leaderboard-card">
+            <div class="game-header" id="gameHeader">
+                <span class="game-icon" id="gameIcon">🎮</span>
+                <div class="game-info">
+                    <h2 id="gameName">Select a Game</h2>
+                    <p id="gameMetric">Choose a game above to view its leaderboard</p>
+                </div>
+            </div>
+            <div id="leaderboardContainer" class="loading">
+                Select a game to view scores
+            </div>
+        </div>
+    </div>
+
+    <script src="leaderboard.js"></script>
+    <script>
+        const gameSelector = document.getElementById('gameSelector');
+        const gameHeader = document.getElementById('gameHeader');
+        const gameIcon = document.getElementById('gameIcon');
+        const gameName = document.getElementById('gameName');
+        const gameMetric = document.getElementById('gameMetric');
+        const leaderboardContainer = document.getElementById('leaderboardContainer');
+
+        let currentGame = null;
+
+        // Get game from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameParam = urlParams.get('game');
+
+        // Create game selector buttons
+        Object.entries(Leaderboard.GAMES).forEach(([gameId, game]) => {
+            const btn = document.createElement('button');
+            btn.className = 'game-btn';
+            btn.textContent = `${game.icon} ${game.name}`;
+            btn.dataset.gameId = gameId;
+            btn.addEventListener('click', () => selectGame(gameId));
+            gameSelector.appendChild(btn);
+        });
+
+        function selectGame(gameId) {
+            const game = Leaderboard.GAMES[gameId];
+            if (!game) return;
+
+            currentGame = gameId;
+
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('game', gameId);
+            window.history.pushState({}, '', url);
+
+            // Update active button
+            document.querySelectorAll('.game-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.gameId === gameId);
+            });
+
+            // Update header
+            gameIcon.textContent = game.icon;
+            gameName.textContent = game.name;
+
+            let metricText = '';
+            if (game.scoreType === 'low') {
+                metricText = 'Fastest times win!';
+            } else if (game.metric === 'wins') {
+                metricText = 'Most wins';
+            } else if (game.metric === 'meters') {
+                metricText = 'Longest distance';
+            } else if (game.metric === 'points') {
+                metricText = 'Highest score';
+            } else {
+                metricText = 'High scores';
+            }
+            gameMetric.textContent = metricText;
+
+            // Load leaderboard
+            loadLeaderboard(gameId);
+        }
+
+        async function loadLeaderboard(gameId) {
+            leaderboardContainer.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const leaderboard = await Leaderboard.getLeaderboard(gameId);
+                renderLeaderboard(gameId, leaderboard);
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                leaderboardContainer.innerHTML = '<div class="no-scores">Error loading leaderboard</div>';
+            }
+        }
+
+        function renderLeaderboard(gameId, leaderboard) {
+            if (leaderboard.length === 0) {
+                leaderboardContainer.innerHTML = `
+                    <div class="no-scores">
+                        <p>No scores yet!</p>
+                        <p style="margin-top: 10px; font-size: 14px;">Be the first to set a record!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="leaderboard-table">';
+
+            leaderboard.forEach((entry, index) => {
+                const rank = index + 1;
+                let rankClass = 'rank-other';
+                let rankDisplay = `#${rank}`;
+
+                if (rank === 1) {
+                    rankClass = 'rank-1';
+                    rankDisplay = '<span class="trophy-icon">🏆</span>';
+                } else if (rank === 2) {
+                    rankClass = 'rank-2';
+                    rankDisplay = '🥈';
+                } else if (rank === 3) {
+                    rankClass = 'rank-3';
+                    rankDisplay = '🥉';
+                }
+
+                const formattedScore = Leaderboard.formatScore(gameId, entry.score);
+
+                html += `
+                    <div class="leaderboard-row ${rankClass}">
+                        <span class="rank">${rankDisplay}</span>
+                        <span class="player-name">${escapeHtml(entry.playerName)}</span>
+                        <span class="score">${formattedScore}</span>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            leaderboardContainer.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load initial game from URL or default to first game
+        if (gameParam && Leaderboard.GAMES[gameParam]) {
+            selectGame(gameParam);
+        } else {
+            // Select first game by default
+            const firstGame = Object.keys(Leaderboard.GAMES)[0];
+            selectGame(firstGame);
+        }
+    </script>
+</body>
+</html>

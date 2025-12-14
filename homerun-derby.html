@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homerun Derby - Classic Games Arcade</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5016 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 16 / 10;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            pointer-events: none;
+        }
+
+        .hud-box {
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid #ffd700;
+        }
+
+        #powerMeterContainer {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 30px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 15px;
+            border: 3px solid #fff;
+            overflow: hidden;
+            display: none;
+        }
+
+        #powerMeter {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff4444, #ffff00, #44ff44);
+            transition: width 0.05s linear;
+        }
+
+        #sweetSpot {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 15%;
+            background: rgba(255, 215, 0, 0.5);
+            border-left: 2px solid gold;
+            border-right: 2px solid gold;
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            border-radius: 10px;
+        }
+
+        #gameOverScreen {
+            display: none;
+        }
+
+        h1 {
+            font-size: 56px;
+            color: #ffd700;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #aaa;
+            margin-bottom: 40px;
+        }
+
+        .btn {
+            padding: 15px 50px;
+            font-size: 24px;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(180deg, #ff6b35, #cc4400);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+
+        .instructions {
+            margin-top: 30px;
+            font-size: 16px;
+            color: #888;
+            max-width: 400px;
+            line-height: 1.6;
+        }
+
+        #backButton {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 30px;
+            font-size: 16px;
+            background: #ff6b35;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        #backButton:hover {
+            background: #ff5522;
+            transform: scale(1.05);
+        }
+
+        .stat-row {
+            font-size: 28px;
+            margin: 15px 0;
+        }
+
+        .stat-label {
+            color: #aaa;
+        }
+
+        .stat-value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .final-score {
+            font-size: 72px;
+            color: #ffd700;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="hud">
+            <div class="hud-box">PITCHES: <span id="pitchCount">10</span></div>
+            <div class="hud-box">HOMERUNS: <span id="hrCount">0</span></div>
+            <div class="hud-box">TOTAL: <span id="totalDist">0</span> ft</div>
+        </div>
+
+        <div id="powerMeterContainer">
+            <div id="sweetSpot"></div>
+            <div id="powerMeter"></div>
+        </div>
+
+        <div id="message"></div>
+
+        <div id="startScreen">
+            <h1>⚾ HOMERUN DERBY</h1>
+            <p class="subtitle">Swing for the fences!</p>
+            <button class="btn" onclick="startGame()">PLAY BALL!</button>
+            <div class="instructions">
+                <p><strong>How to Play:</strong></p>
+                <p>Press SPACE or CLICK when the ball is in the sweet spot!</p>
+                <p>Perfect timing = Monster homerun!</p>
+                <p>You get 10 pitches - hit as many homeruns as you can!</p>
+            </div>
+        </div>
+
+        <div id="gameOverScreen">
+            <h1>GAME OVER</h1>
+            <div class="stat-row">
+                <span class="stat-label">Homeruns:</span>
+                <span class="stat-value" id="finalHR">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Longest Hit:</span>
+                <span class="stat-value" id="finalLongest">0</span> ft
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Total Distance:</span>
+            </div>
+            <div class="final-score"><span id="finalTotal">0</span> ft</div>
+            <button class="btn" onclick="startGame()">PLAY AGAIN</button>
+            <button class="btn" style="background: linear-gradient(180deg, #667eea, #4a3f9f);" onclick="location.href='index.html'">MAIN MENU</button>
+        </div>
+    </div>
+
+    <button id="backButton" onclick="window.location.href='index.html'">Back to Menu</button>
+
+    <script src="leaderboard.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game state
+        const game = {
+            state: 'start', // start, pitching, swinging, hit, miss, gameover
+            pitchesLeft: 10,
+            homeruns: 0,
+            totalDistance: 0,
+            longestHit: 0,
+
+            // Ball state
+            ball: {
+                x: 0,
+                y: 0,
+                z: 0, // depth (0 = pitcher, 1 = batter)
+                vx: 0,
+                vy: 0,
+                vz: 0,
+                visible: false,
+                size: 8
+            },
+
+            // Hit ball state
+            hitBall: {
+                x: 0,
+                y: 0,
+                z: 0,
+                vx: 0,
+                vy: 0,
+                vz: 0,
+                active: false,
+                distance: 0,
+                maxHeight: 0
+            },
+
+            // Batter state
+            batter: {
+                swinging: false,
+                swingFrame: 0,
+                swingPower: 0
+            },
+
+            // Timing
+            swingTiming: 0, // 0-1, 0.5 is perfect
+            lastHitResult: ''
+        };
+
+        // Stadium colors
+        const colors = {
+            sky: '#1e90ff',
+            skyGradient: '#87ceeb',
+            grass: '#228b22',
+            dirt: '#8b4513',
+            wall: '#1a472a',
+            wallTop: '#ffd700',
+            seats: '#cc3333',
+            foulLine: '#ffffff'
+        };
+
+        function drawStadium() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Sky gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.5);
+            skyGrad.addColorStop(0, colors.sky);
+            skyGrad.addColorStop(1, colors.skyGradient);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, w, h * 0.5);
+
+            // Outfield wall
+            ctx.fillStyle = colors.wall;
+            ctx.fillRect(0, h * 0.35, w, h * 0.15);
+
+            // Yellow top of wall
+            ctx.fillStyle = colors.wallTop;
+            ctx.fillRect(0, h * 0.35, w, 8);
+
+            // Distance markers on wall
+            ctx.fillStyle = '#fff';
+            ctx.font = `${Math.max(12, w * 0.02)}px Courier New`;
+            ctx.textAlign = 'center';
+            ctx.fillText('330', w * 0.1, h * 0.43);
+            ctx.fillText('380', w * 0.3, h * 0.41);
+            ctx.fillText('400', w * 0.5, h * 0.40);
+            ctx.fillText('380', w * 0.7, h * 0.41);
+            ctx.fillText('330', w * 0.9, h * 0.43);
+
+            // Stands/seats
+            ctx.fillStyle = colors.seats;
+            ctx.fillRect(0, h * 0.15, w, h * 0.2);
+
+            // Grass (outfield)
+            const grassGrad = ctx.createLinearGradient(0, h * 0.5, 0, h);
+            grassGrad.addColorStop(0, '#2d5016');
+            grassGrad.addColorStop(0.3, '#228b22');
+            grassGrad.addColorStop(1, '#1a4d1a');
+            ctx.fillStyle = grassGrad;
+            ctx.fillRect(0, h * 0.5, w, h * 0.5);
+
+            // Infield dirt
+            ctx.fillStyle = colors.dirt;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.5, h * 0.55);
+            ctx.lineTo(w * 0.75, h * 0.75);
+            ctx.lineTo(w * 0.5, h * 0.95);
+            ctx.lineTo(w * 0.25, h * 0.75);
+            ctx.closePath();
+            ctx.fill();
+
+            // Pitcher's mound
+            ctx.fillStyle = '#a0522d';
+            ctx.beginPath();
+            ctx.ellipse(w * 0.5, h * 0.65, w * 0.04, h * 0.02, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Home plate area
+            ctx.fillStyle = '#d2691e';
+            ctx.beginPath();
+            ctx.ellipse(w * 0.5, h * 0.92, w * 0.08, h * 0.04, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Home plate
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(w * 0.5, h * 0.90);
+            ctx.lineTo(w * 0.52, h * 0.92);
+            ctx.lineTo(w * 0.52, h * 0.94);
+            ctx.lineTo(w * 0.48, h * 0.94);
+            ctx.lineTo(w * 0.48, h * 0.92);
+            ctx.closePath();
+            ctx.fill();
+
+            // Foul lines
+            ctx.strokeStyle = colors.foulLine;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.5, h * 0.92);
+            ctx.lineTo(0, h * 0.35);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(w * 0.5, h * 0.92);
+            ctx.lineTo(w, h * 0.35);
+            ctx.stroke();
+        }
+
+        function drawPitcher() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const px = w * 0.5;
+            const py = h * 0.62;
+            const scale = w / 900;
+
+            // Body
+            ctx.fillStyle = '#1e3a5f';
+            ctx.fillRect(px - 8 * scale, py - 20 * scale, 16 * scale, 30 * scale);
+
+            // Head
+            ctx.fillStyle = '#ffdbac';
+            ctx.beginPath();
+            ctx.arc(px, py - 28 * scale, 10 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cap
+            ctx.fillStyle = '#1e3a5f';
+            ctx.beginPath();
+            ctx.arc(px, py - 32 * scale, 10 * scale, Math.PI, 0);
+            ctx.fill();
+            ctx.fillRect(px - 12 * scale, py - 32 * scale, 24 * scale, 4 * scale);
+
+            // Arms
+            ctx.fillStyle = '#ffdbac';
+            ctx.fillRect(px - 18 * scale, py - 15 * scale, 8 * scale, 20 * scale);
+            ctx.fillRect(px + 10 * scale, py - 15 * scale, 8 * scale, 20 * scale);
+
+            // Legs
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(px - 6 * scale, py + 10 * scale, 5 * scale, 20 * scale);
+            ctx.fillRect(px + 1 * scale, py + 10 * scale, 5 * scale, 20 * scale);
+        }
+
+        function drawBatter() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const bx = w * 0.58;
+            const by = h * 0.88;
+            const scale = w / 900;
+
+            const swingAngle = game.batter.swinging ?
+                Math.min(game.batter.swingFrame / 8, 1) * Math.PI * 0.8 - Math.PI * 0.2 :
+                -Math.PI * 0.3;
+
+            // Body
+            ctx.fillStyle = '#cc0000';
+            ctx.fillRect(bx - 10 * scale, by - 30 * scale, 20 * scale, 40 * scale);
+
+            // Head with helmet
+            ctx.fillStyle = '#cc0000';
+            ctx.beginPath();
+            ctx.arc(bx, by - 40 * scale, 12 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Face
+            ctx.fillStyle = '#ffdbac';
+            ctx.beginPath();
+            ctx.arc(bx + 4 * scale, by - 38 * scale, 8 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Legs
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(bx - 8 * scale, by + 10 * scale, 6 * scale, 25 * scale);
+            ctx.fillRect(bx + 2 * scale, by + 10 * scale, 6 * scale, 25 * scale);
+
+            // Bat
+            ctx.save();
+            ctx.translate(bx - 5 * scale, by - 20 * scale);
+            ctx.rotate(swingAngle);
+
+            // Bat handle
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(0, 0, 6 * scale, 50 * scale);
+
+            // Bat barrel
+            ctx.fillStyle = '#d2691e';
+            ctx.fillRect(-2 * scale, 50 * scale, 10 * scale, 30 * scale);
+
+            ctx.restore();
+        }
+
+        function drawBall() {
+            if (!game.ball.visible) return;
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Calculate screen position based on depth (z)
+            // z = 0 at pitcher, z = 1 at batter
+            const perspective = 1 + game.ball.z * 2;
+            const screenX = w * 0.5 + (game.ball.x - w * 0.5) * perspective;
+            const screenY = h * 0.65 + (game.ball.y - h * 0.65) * perspective + game.ball.z * (h * 0.27);
+            const size = game.ball.size * perspective;
+
+            // Ball shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(screenX, screenY + size * 2, size * 0.8, size * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ball
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Seams
+            ctx.strokeStyle = '#cc0000';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(screenX - size * 0.3, screenY, size * 0.5, -0.5, 0.5);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(screenX + size * 0.3, screenY, size * 0.5, Math.PI - 0.5, Math.PI + 0.5);
+            ctx.stroke();
+        }
+
+        function drawHitBall() {
+            if (!game.hitBall.active) return;
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Calculate screen position
+            // As ball goes into distance, it moves up and gets smaller
+            const depthFactor = Math.max(0.1, 1 - game.hitBall.z / 500);
+            const screenX = w * 0.5 + game.hitBall.x * depthFactor;
+            const screenY = h * 0.5 - game.hitBall.y * depthFactor * 0.5 - game.hitBall.z * 0.3;
+            const size = Math.max(2, 12 * depthFactor);
+
+            // Ball trail
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            for (let i = 1; i <= 5; i++) {
+                const trailX = screenX - game.hitBall.vx * i * 0.5 * depthFactor;
+                const trailY = screenY + game.hitBall.vy * i * 0.3 * depthFactor;
+                ctx.beginPath();
+                ctx.arc(trailX, trailY, size * (1 - i * 0.15), 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Ball
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawDistanceMarker() {
+            if (!game.hitBall.active && game.lastHitResult && game.state === 'hit') return;
+
+            if (game.hitBall.active || game.lastHitResult) {
+                const dist = game.hitBall.active ? Math.floor(game.hitBall.distance) : 0;
+                if (dist > 0 || game.lastHitResult) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = `bold ${Math.max(24, canvas.width * 0.04)}px Courier New`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${Math.floor(game.hitBall.distance)} ft`, canvas.width * 0.5, canvas.height * 0.3);
+                }
+            }
+        }
+
+        function showMessage(text, duration = 1500) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.style.opacity = 1;
+            setTimeout(() => {
+                msg.style.opacity = 0;
+            }, duration);
+        }
+
+        function updateHUD() {
+            document.getElementById('pitchCount').textContent = game.pitchesLeft;
+            document.getElementById('hrCount').textContent = game.homeruns;
+            document.getElementById('totalDist').textContent = game.totalDistance;
+        }
+
+        function pitch() {
+            if (game.state !== 'pitching') return;
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            game.ball.x = w * 0.5;
+            game.ball.y = h * 0.65;
+            game.ball.z = 0;
+            game.ball.vx = (Math.random() - 0.5) * 1.5;
+            game.ball.vy = 0;
+            game.ball.vz = 0.018 + Math.random() * 0.006; // Slower pitch for easier timing
+            game.ball.visible = true;
+            game.swingTiming = 0;
+        }
+
+        function swing() {
+            if (game.state !== 'pitching' || !game.ball.visible || game.batter.swinging) return;
+
+            game.batter.swinging = true;
+            game.batter.swingFrame = 0;
+
+            // Calculate timing (how close to perfect)
+            // Perfect is when ball.z is around 0.85-0.95
+            const timing = game.ball.z;
+            game.swingTiming = timing;
+
+            // Check if it's a hit - very forgiving timing window
+            setTimeout(() => {
+                if (timing >= 0.25 && timing <= 1.1) {
+                    // HIT! Wide timing window for fun gameplay
+                    const quality = 1 - Math.abs(timing - 0.6) * 1.5; // 0.6 is perfect
+                    hit(Math.max(0.5, Math.min(1, quality))); // Minimum 0.5 quality = decent contact
+                } else if (timing < 0.25) {
+                    miss('TOO EARLY!');
+                } else {
+                    miss('TOO LATE!');
+                }
+            }, 100);
+        }
+
+        function hit(quality) {
+            game.state = 'hit';
+            game.ball.visible = false;
+
+            // MLB-style physics but more forgiving for fun
+            // Exit velocity: 98-112 mph based on timing quality
+            // This makes even decent contact likely to go out
+            const exitVelocity = 98 + quality * 14; // 98-112 mph
+
+            // Launch angle: 25-35 degrees optimal for HRs
+            const launchAngle = 26 + Math.random() * 8; // degrees
+            const sprayAngle = (Math.random() - 0.5) * 30; // pull/opposite field
+
+            // Convert to radians
+            const launchRad = launchAngle * Math.PI / 180;
+            const sprayRad = sprayAngle * Math.PI / 180;
+
+            // Calculate estimated distance using simplified baseball physics
+            // Real formula accounts for air density, spin, etc.
+            // We'll pre-calculate the expected distance and work backwards
+            const baseDistance = calculateExpectedDistance(exitVelocity, launchAngle);
+
+            // Store for animation - scale to game units
+            const flightTime = 80 + quality * 30; // frames
+            const gameScale = baseDistance / (flightTime * 0.8);
+
+            game.hitBall.x = 0;
+            game.hitBall.y = 0;
+            game.hitBall.z = 0;
+            game.hitBall.vx = Math.sin(sprayRad) * gameScale * 0.8;
+            game.hitBall.vy = gameScale * 0.6;
+            game.hitBall.vz = Math.cos(sprayRad) * gameScale * 0.8;
+            game.hitBall.expectedDistance = baseDistance;
+            game.hitBall.active = true;
+            game.hitBall.distance = 0;
+            game.hitBall.maxHeight = 0;
+
+            showMessage('CRACK!', 500);
+        }
+
+        // Calculate HR distance based on exit velo and launch angle
+        function calculateExpectedDistance(exitVelo, launchAngle) {
+            // Tuned for fun gameplay
+            // 98 mph ≈ 370-400 ft
+            // 105 mph ≈ 420-440 ft
+            // 112 mph ≈ 460-490 ft
+
+            // Optimal angle is around 28-32 degrees
+            const optimalAngle = 30;
+            const angleEfficiency = 1 - Math.abs(launchAngle - optimalAngle) * 0.01;
+
+            // Base distance formula + 20 feet bonus
+            const baseDistance = (exitVelo - 60) * 5.8 + 20;
+
+            // Add some randomness (+/- 20 feet)
+            const variance = (Math.random() - 0.5) * 40;
+
+            return Math.floor(baseDistance * angleEfficiency + variance);
+        }
+
+        function miss(reason) {
+            game.state = 'miss';
+            game.ball.visible = false;
+            game.lastHitResult = reason;
+            showMessage(reason, 1000);
+
+            setTimeout(() => {
+                nextPitch();
+            }, 1500);
+        }
+
+        function nextPitch() {
+            game.pitchesLeft--;
+            updateHUD();
+
+            if (game.pitchesLeft <= 0) {
+                endGame();
+                return;
+            }
+
+            game.state = 'pitching';
+            game.batter.swinging = false;
+            game.batter.swingFrame = 0;
+            game.lastHitResult = '';
+            game.hitBall.active = false;
+
+            setTimeout(() => {
+                pitch();
+            }, 1000);
+        }
+
+        function endGame() {
+            game.state = 'gameover';
+
+            document.getElementById('finalHR').textContent = game.homeruns;
+            document.getElementById('finalLongest').textContent = game.longestHit;
+            document.getElementById('finalTotal').textContent = game.totalDistance;
+            document.getElementById('gameOverScreen').style.display = 'flex';
+
+            // Submit to leaderboard
+            if (typeof Leaderboard !== 'undefined') {
+                Leaderboard.checkAndSubmitScore('homerun-derby', game.totalDistance);
+            }
+        }
+
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+
+            game.state = 'pitching';
+            game.pitchesLeft = 10;
+            game.homeruns = 0;
+            game.totalDistance = 0;
+            game.longestHit = 0;
+            game.ball.visible = false;
+            game.hitBall.active = false;
+            game.batter.swinging = false;
+            game.lastHitResult = '';
+
+            updateHUD();
+
+            setTimeout(() => {
+                pitch();
+            }, 1000);
+        }
+
+        function update() {
+            // Update pitch
+            if (game.ball.visible && game.state === 'pitching') {
+                game.ball.z += game.ball.vz;
+                game.ball.x += game.ball.vx;
+
+                // Ball passed batter
+                if (game.ball.z > 1.1 && !game.batter.swinging) {
+                    miss('STRIKE!');
+                }
+            }
+
+            // Update swing animation
+            if (game.batter.swinging) {
+                game.batter.swingFrame++;
+                if (game.batter.swingFrame > 15) {
+                    game.batter.swinging = false;
+                    game.batter.swingFrame = 0;
+                }
+            }
+
+            // Update hit ball animation
+            if (game.hitBall.active) {
+                game.hitBall.x += game.hitBall.vx;
+                game.hitBall.y += game.hitBall.vy;
+                game.hitBall.z += game.hitBall.vz;
+
+                // Gravity for visual arc
+                game.hitBall.vy -= 0.15;
+
+                // Slight air resistance for visual
+                game.hitBall.vx *= 0.998;
+                game.hitBall.vz *= 0.998;
+
+                // Use pre-calculated distance, interpolate during flight
+                const totalZ = game.hitBall.z;
+                const progress = Math.min(1, totalZ / (game.hitBall.expectedDistance * 0.12));
+                game.hitBall.distance = game.hitBall.expectedDistance * progress;
+
+                game.hitBall.maxHeight = Math.max(game.hitBall.maxHeight, game.hitBall.y);
+
+                // Ball landed when it comes back down
+                if (game.hitBall.y < 0 && game.hitBall.vy < 0) {
+                    game.hitBall.active = false;
+                    const distance = game.hitBall.expectedDistance;
+
+                    // Distance categories (easier thresholds)
+                    if (distance >= 450) {
+                        game.homeruns++;
+                        game.totalDistance += distance;
+                        game.longestHit = Math.max(game.longestHit, distance);
+                        showMessage(`💣 MONSTER! ${distance} ft`, 2000);
+                    } else if (distance >= 400) {
+                        game.homeruns++;
+                        game.totalDistance += distance;
+                        game.longestHit = Math.max(game.longestHit, distance);
+                        showMessage(`CRUSHED! ${distance} ft`, 2000);
+                    } else if (distance >= 320) {
+                        game.homeruns++;
+                        game.totalDistance += distance;
+                        game.longestHit = Math.max(game.longestHit, distance);
+                        showMessage(`HOMERUN! ${distance} ft`, 2000);
+                    } else if (distance >= 300) {
+                        showMessage(`${distance} ft - Off the wall!`, 1500);
+                    } else if (distance >= 220) {
+                        showMessage(`${distance} ft - Warning track`, 1500);
+                    } else if (distance >= 120) {
+                        showMessage(`${distance} ft - Fly out`, 1500);
+                    } else {
+                        showMessage(`${distance} ft - Weak popup`, 1500);
+                    }
+
+                    updateHUD();
+
+                    setTimeout(() => {
+                        nextPitch();
+                    }, 2000);
+                }
+            }
+        }
+
+        function draw() {
+            drawStadium();
+            drawPitcher();
+            drawBatter();
+            drawBall();
+            drawHitBall();
+            drawDistanceMarker();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Input handling
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                swing();
+            }
+        });
+
+        canvas.addEventListener('click', () => {
+            swing();
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            swing();
+        });
+
+        // Start game loop
+        gameLoop();
+    </script>
+</body>
+</html>

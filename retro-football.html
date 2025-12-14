@@ -298,6 +298,7 @@
         </div>
     </div>
 
+    <script src="leaderboard.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -824,6 +825,11 @@
                 game.homeScore < game.awayScore ? 'YOU LOSE' : 'TIE GAME';
             document.getElementById('gameOverTitle').style.color =
                 game.homeScore > game.awayScore ? '#FFD700' : '#DC143C';
+
+            // Submit to leaderboard if player wins
+            if (game.homeScore > game.awayScore) {
+                Leaderboard.checkAndSubmitScore('retro-football', game.homeScore);
+            }
         }
 
         function update() {

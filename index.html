@@ -45,12 +45,10 @@
         .game-card {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
-            padding: 30px;
+            padding: 25px;
             text-align: center;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             cursor: pointer;
-            text-decoration: none;
-            color: #333;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
         .game-card:hover {
@@ -59,7 +57,7 @@
         }
         .game-icon {
             font-size: 64px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .game-title {
             font-size: 24px;
@@ -71,6 +69,39 @@
             font-size: 14px;
             color: #666;
             line-height: 1.5;
+            margin-bottom: 15px;
+        }
+        .leaderboard-section {
+            border-top: 1px solid #eee;
+            padding-top: 12px;
+            margin-top: 5px;
+        }
+        .leaderboard-title {
+            font-size: 10px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .scores-container {
+            text-align: left;
+        }
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 3px 0;
+            color: #555;
+        }
+        .score-row .score-value {
+            color: #667eea;
+            font-weight: bold;
+        }
+        .no-scores {
+            font-size: 11px;
+            color: #aaa;
+            font-style: italic;
+            text-align: center;
         }
         .footer {
             text-align: center;
@@ -86,58 +117,136 @@
         <p class="subtitle">Choose your game and have fun!</p>
 
         <div class="games-grid">
-            <a href="pong.html" class="game-card">
+            <div class="game-card" onclick="location.href='pong.html'">
                 <div class="game-icon">🏓</div>
                 <div class="game-title">Pong</div>
-                <div class="game-description">Classic paddle game. First to 5 points wins! Use W/E or arrows to move.</div>
-            </a>
+                <div class="game-description">Classic paddle game. First to 5 points wins!</div>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="pong"></div>
+                </div>
+            </div>
 
-            <a href="snake.html" class="game-card">
+            <div class="game-card" onclick="location.href='snake.html'">
                 <div class="game-icon">🐍</div>
                 <div class="game-title">Snake</div>
-                <div class="game-description">Eat food and grow longer without hitting walls or yourself!</div>
-            </a>
+                <div class="game-description">Eat food and grow longer without hitting walls!</div>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="snake"></div>
+                </div>
+            </div>
 
-            <a href="flappy-bird.html" class="game-card">
+            <div class="game-card" onclick="location.href='flappy-bird.html'">
                 <div class="game-icon">🐦</div>
                 <div class="game-title">Flappy Bird</div>
                 <div class="game-description">Tap to fly through pipes. How far can you go?</div>
-            </a>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="flappy-bird"></div>
+                </div>
+            </div>
 
-            <a href="rooftop-snipers.html" class="game-card">
+            <div class="game-card" onclick="location.href='rooftop-snipers.html'">
                 <div class="game-icon">🎯</div>
-                <div class="game-title">Rooftop Snipers</div>
-                <div class="game-description">2-player rooftop battle! Jump and shoot to knock your opponent off!</div>
-            </a>
+                <div class="game-title">Rooftop Rumble</div>
+                <div class="game-description">2-player rooftop battle! Knock your opponent off!</div>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="rooftop-snipers"></div>
+                </div>
+            </div>
 
-            <a href="chess.html" class="game-card">
+            <div class="game-card" onclick="location.href='chess.html'">
                 <div class="game-icon">♟️</div>
                 <div class="game-title">Chess</div>
-                <div class="game-description">Classic strategy game. Play chess with a friend on the same device!</div>
-            </a>
+                <div class="game-description">Classic strategy game. Play with a friend!</div>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="chess"></div>
+                </div>
+            </div>
 
-            <a href="city-runner.html" class="game-card">
+            <div class="game-card" onclick="location.href='city-runner.html'">
                 <div class="game-icon">🏃</div>
                 <div class="game-title">City Runner</div>
-                <div class="game-description">Escape from the monster! Use WASD to dodge obstacles and survive in the city!</div>
-            </a>
+                <div class="game-description">Escape the monster! Dodge obstacles and survive!</div>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="city-runner"></div>
+                </div>
+            </div>
 
-            <a href="retro-football.html" class="game-card">
+            <div class="game-card" onclick="location.href='retro-football.html'">
                 <div class="game-icon">🏈</div>
                 <div class="game-title">Retro Football</div>
-                <div class="game-description">Build your NFL dream team! Pick real players and lead them to victory!</div>
-            </a>
+                <div class="game-description">Build your NFL dream team and win!</div>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="retro-football"></div>
+                </div>
+            </div>
 
-            <a href="bedtime-berzerk.html" class="game-card">
+            <div class="game-card" onclick="location.href='bedtime-berzerk.html'">
                 <div class="game-icon">🛏️</div>
                 <div class="game-title">Bedtime Berzerk</div>
-                <div class="game-description">Collect pillows, your Stanley cup, and weights while avoiding monsters in the dark!</div>
-            </a>
+                <div class="game-description">Collect items while avoiding monsters!</div>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="bedtime-berzerk"></div>
+                </div>
+            </div>
+
+            <div class="game-card" onclick="location.href='homerun-derby.html'">
+                <div class="game-icon">⚾</div>
+                <div class="game-title">Homerun Derby</div>
+                <div class="game-description">Swing for the fences! Time your swings perfectly!</div>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="homerun-derby"></div>
+                </div>
+            </div>
         </div>
 
         <div class="footer">
             All games work in any modern browser. No downloads required!
+            <br><br>
+            <button onclick="clearLeaderboards()" style="
+                padding: 10px 20px;
+                font-size: 14px;
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-family: 'Courier New', monospace;
+            ">Clear All Leaderboards</button>
         </div>
     </div>
+
+    <script src="leaderboard.js"></script>
+    <script>
+        async function loadAllLeaderboardPreviews() {
+            const containers = document.querySelectorAll('.scores-container');
+            for (const container of containers) {
+                const gameId = container.dataset.game;
+                await Leaderboard.renderMiniLeaderboard(gameId, container);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadAllLeaderboardPreviews);
+        } else {
+            loadAllLeaderboardPreviews();
+        }
+
+        function clearLeaderboards() {
+            if (confirm('Are you sure you want to clear ALL leaderboards? This cannot be undone.')) {
+                localStorage.removeItem('arcadeLeaderboards');
+                loadAllLeaderboardPreviews();
+                alert('All leaderboards cleared!');
+            }
+        }
+    </script>
 </body>
 </html>

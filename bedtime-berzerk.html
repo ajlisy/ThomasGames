@@ -172,6 +172,7 @@
         </div>
     </div>
 
+    <script src="leaderboard.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -200,6 +201,9 @@
             { name: 'Munchkin', color: '#F59E0B', eyeColor: '#00BFFF', body: 'square' },
             { name: 'Wobbles', color: '#6366F1', eyeColor: '#FFB6C1', body: 'tall' }
         ];
+
+        // Animation frame tracking (to prevent multiple game loops)
+        let animationFrameId = null;
 
         // Game state
         let gameState = {
@@ -413,6 +417,11 @@
         }
 
         function startGame() {
+            // Cancel any existing game loop to prevent speed increase on restart
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
             document.getElementById('startScreen').style.display = 'none';
             initGame();
             gameState.running = true;
@@ -546,6 +555,8 @@
                 if (atBed) {
                     gameState.won = true;
                     gameState.running = false;
+                    // Submit completion time to leaderboard (lower is better)
+                    Leaderboard.checkAndSubmitScore('bedtime-berzerk', gameState.elapsedTime);
                 }
             }
         }
@@ -1078,7 +1089,7 @@
         function gameLoop() {
             updateGame();
             draw();
-            requestAnimationFrame(gameLoop);
+            animationFrameId = requestAnimationFrame(gameLoop);
         }
 
         // Input handling

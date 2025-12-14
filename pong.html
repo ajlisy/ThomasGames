@@ -59,6 +59,7 @@
         <button id="backButton" onclick="window.location.href='index.html'">Back to Menu</button>
     </div>
 
+    <script src="leaderboard.js"></script>
     <script>
         const canvas = document.getElementById('pongCanvas');
         const ctx = canvas.getContext('2d');
@@ -330,6 +331,8 @@
                 updateScore();
                 if (gameState.player.score >= WINNING_SCORE) {
                     gameState.gameOver = true;
+                    // Submit to leaderboard when player wins
+                    Leaderboard.checkAndSubmitScore('pong', 1);
                 } else {
                     resetBall();
                 }

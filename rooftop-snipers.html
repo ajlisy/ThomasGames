@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rooftop Snipers</title>
+    <title>Rooftop Rumble</title>
     <style>
         body {
             margin: 0;
@@ -70,6 +70,7 @@
         <button id="backButton" onclick="window.location.href='index.html'">Back to Menu</button>
     </div>
 
+    <script src="leaderboard.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -790,6 +791,10 @@
         function resetRound() {
             if (gameState.player1.score >= WINNING_SCORE || gameState.player2.score >= WINNING_SCORE) {
                 gameState.gameOver = true;
+                // Submit to leaderboard if Player 1 wins
+                if (gameState.player1.score >= WINNING_SCORE) {
+                    Leaderboard.checkAndSubmitScore('rooftop-snipers', 1);
+                }
             }
 
             gameState.player1.x = 150;
