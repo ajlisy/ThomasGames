@@ -220,17 +220,6 @@
 
         <div class="footer">
             All games work in any modern browser. No downloads required!
-            <br><br>
-            <button onclick="clearLeaderboards()" style="
-                padding: 10px 20px;
-                font-size: 14px;
-                background: #dc3545;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                font-family: 'Courier New', monospace;
-            ">Clear All Leaderboards</button>
         </div>
     </div>
 
@@ -248,14 +237,6 @@
             document.addEventListener('DOMContentLoaded', loadAllLeaderboardPreviews);
         } else {
             loadAllLeaderboardPreviews();
-        }
-
-        function clearLeaderboards() {
-            if (confirm('Are you sure you want to clear ALL leaderboards? This cannot be undone.')) {
-                localStorage.removeItem('arcadeLeaderboards');
-                loadAllLeaderboardPreviews();
-                alert('All leaderboards cleared!');
-            }
         }
     </script>
 </body>
