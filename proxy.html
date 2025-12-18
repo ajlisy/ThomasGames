@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MICHEAL HOLIHAN - Stealth Infiltration</title>
+    <title>MICHAEL HOLIHAN - Stealth Infiltration</title>
     <style>
         * {
             margin: 0;
@@ -71,7 +71,13 @@
             font-family: 'Courier New', monospace;
             font-weight: bold;
             text-shadow: 0 0 5px #000;
+            text-decoration: none;
             z-index: 9999;
+            transition: all 0.3s;
+        }
+        #subscribeText:hover {
+            background: #cc0000;
+            transform: translateX(-50%) scale(1.05);
         }
         #backButton {
             position: fixed;
@@ -99,12 +105,12 @@
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div id="instructions">
             <span class="key">WASD</span> or <span class="key">Arrows</span> Move |
-            <span class="key">SPACE</span> Activate Micheal Holihan |
+            <span class="key">SPACE</span> Activate Michael Holihan |
             <span class="key">R</span> Restart
         </div>
     </div>
 
-    <div id="subscribeText">Subscribe to Michaels Channel</div>
+    <a id="subscribeText" href="https://www.youtube.com/@padraichoulihan2932" target="_blank">Subscribe to Michael's Channel</a>
     <button id="backButton" onclick="window.location.href='index.html'">Back to Menu</button>
 
     <script>
