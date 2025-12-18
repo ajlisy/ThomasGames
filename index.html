@@ -109,10 +109,19 @@
             font-size: 14px;
             margin-top: 30px;
         }
+        .subscribe-text {
+            text-align: center;
+            font-size: 56px;
+            color: #ff0000;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="subscribe-text">Subscribe to Michaels Channel</div>
         <h1>Classic Games Arcade</h1>
         <p class="subtitle">Choose your game and have fun!</p>
 
@@ -204,6 +213,16 @@
                 <div class="leaderboard-section">
                     <div class="leaderboard-title">Top Players</div>
                     <div class="scores-container" data-game="homerun-derby"></div>
+                </div>
+            </div>
+
+            <div class="game-card" onclick="location.href='proxy.html'">
+                <div class="game-icon">🕵️</div>
+                <div class="game-title">Proxy</div>
+                <div class="game-description">Stealth infiltration! Use disguises to sneak past guards!</div>
+                <div class="leaderboard-section">
+                    <div class="leaderboard-title">Top Players</div>
+                    <div class="scores-container" data-game="proxy"></div>
                 </div>
             </div>
         </div>

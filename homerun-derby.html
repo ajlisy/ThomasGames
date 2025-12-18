@@ -601,7 +601,7 @@
             game.ball.z = 0;
             game.ball.vx = (Math.random() - 0.5) * 1.5;
             game.ball.vy = 0;
-            game.ball.vz = 0.018 + Math.random() * 0.006; // Slower pitch for easier timing
+            game.ball.vz = 0.012 + Math.random() * 0.004; // Very slow pitch for easy timing
             game.ball.visible = true;
             game.swingTiming = 0;
         }
@@ -619,11 +619,11 @@
 
             // Check if it's a hit - very forgiving timing window
             setTimeout(() => {
-                if (timing >= 0.25 && timing <= 1.1) {
-                    // HIT! Wide timing window for fun gameplay
-                    const quality = 1 - Math.abs(timing - 0.6) * 1.5; // 0.6 is perfect
-                    hit(Math.max(0.5, Math.min(1, quality))); // Minimum 0.5 quality = decent contact
-                } else if (timing < 0.25) {
+                if (timing >= 0.15 && timing <= 1.2) {
+                    // HIT! Extra wide timing window for easy gameplay
+                    const quality = 1 - Math.abs(timing - 0.6) * 1.0; // 0.6 is perfect, more forgiving
+                    hit(Math.max(0.7, Math.min(1, quality))); // Minimum 0.7 quality = solid contact
+                } else if (timing < 0.15) {
                     miss('TOO EARLY!');
                 } else {
                     miss('TOO LATE!');
@@ -636,9 +636,9 @@
             game.ball.visible = false;
 
             // MLB-style physics but more forgiving for fun
-            // Exit velocity: 98-112 mph based on timing quality
-            // This makes even decent contact likely to go out
-            const exitVelocity = 98 + quality * 14; // 98-112 mph
+            // Exit velocity: 105-118 mph based on timing quality
+            // This makes even decent contact very likely to go out
+            const exitVelocity = 105 + quality * 13; // 105-118 mph
 
             // Launch angle: 25-35 degrees optimal for HRs
             const launchAngle = 26 + Math.random() * 8; // degrees
@@ -803,27 +803,27 @@
                     game.hitBall.active = false;
                     const distance = game.hitBall.expectedDistance;
 
-                    // Distance categories (easier thresholds)
-                    if (distance >= 450) {
+                    // Distance categories (easy thresholds)
+                    if (distance >= 420) {
                         game.homeruns++;
                         game.totalDistance += distance;
                         game.longestHit = Math.max(game.longestHit, distance);
                         showMessage(`💣 MONSTER! ${distance} ft`, 2000);
-                    } else if (distance >= 400) {
+                    } else if (distance >= 360) {
                         game.homeruns++;
                         game.totalDistance += distance;
                         game.longestHit = Math.max(game.longestHit, distance);
                         showMessage(`CRUSHED! ${distance} ft`, 2000);
-                    } else if (distance >= 320) {
+                    } else if (distance >= 280) {
                         game.homeruns++;
                         game.totalDistance += distance;
                         game.longestHit = Math.max(game.longestHit, distance);
                         showMessage(`HOMERUN! ${distance} ft`, 2000);
-                    } else if (distance >= 300) {
+                    } else if (distance >= 250) {
                         showMessage(`${distance} ft - Off the wall!`, 1500);
-                    } else if (distance >= 220) {
+                    } else if (distance >= 180) {
                         showMessage(`${distance} ft - Warning track`, 1500);
-                    } else if (distance >= 120) {
+                    } else if (distance >= 100) {
                         showMessage(`${distance} ft - Fly out`, 1500);
                     } else {
                         showMessage(`${distance} ft - Weak popup`, 1500);

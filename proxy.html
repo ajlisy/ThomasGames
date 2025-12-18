@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MICHEAL HOLIHAN - Stealth Infiltration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f23 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #gameCanvas {
+            border: 3px solid #00ff88;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3),
+                        inset 0 0 60px rgba(0, 255, 136, 0.1);
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            color: #00ff88;
+            font-size: 16px;
+            text-shadow: 0 0 10px #00ff88;
+            pointer-events: none;
+        }
+        #instructions {
+            position: absolute;
+            bottom: -80px;
+            color: #00ff88;
+            font-size: 14px;
+            text-align: center;
+            opacity: 0.8;
+        }
+        .key {
+            display: inline-block;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 0 2px;
+        }
+        #subscribeText {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            color: #ffffff;
+            background: #ff0000;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-shadow: 0 0 5px #000;
+            z-index: 9999;
+        }
+        #backButton {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 30px;
+            font-size: 16px;
+            background: #00ff88;
+            color: #0a0a0a;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+        #backButton:hover {
+            background: #00cc6a;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="instructions">
+            <span class="key">WASD</span> or <span class="key">Arrows</span> Move |
+            <span class="key">SPACE</span> Activate Micheal Holihan |
+            <span class="key">R</span> Restart
+        </div>
+    </div>
+
+    <div id="subscribeText">Subscribe to Michaels Channel</div>
+    <button id="backButton" onclick="window.location.href='index.html'">Back to Menu</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game constants
+        const TILE_SIZE = 40;
+        const PLAYER_SIZE = 30;
+        const GUARD_SIZE = 32;
+        const CAMERA_SIZE = 24;
+        const VISION_RANGE = 120;
+        const PROXY_DURATION = 180; // frames (3 seconds at 60fps)
+        const PROXY_COOLDOWN = 300; // frames (5 seconds)
+
+        // Game state
+        let gameState = {
+            player: { x: 60, y: 60, speed: 3, disguised: false },
+            guards: [],
+            cameras: [],
+            walls: [],
+            objectives: [],
+            exit: null,
+            proxyCharge: 100,
+            proxyCooldown: 0,
+            proxyActive: 0,
+            level: 1,
+            score: 0,
+            detected: false,
+            detectionTimer: 0,
+            won: false,
+            gameOver: false,
+            objectivesCollected: 0,
+            totalObjectives: 0,
+            particles: [],
+            scanLines: []
+        };
+
+        let keys = {};
+        let highScore = parseInt(localStorage.getItem('proxyHighScore')) || 0;
+
+        // Level definitions
+        const levels = [
+            {
+                walls: [
+                    // Outer walls
+                    { x: 0, y: 0, w: 800, h: 20 },
+                    { x: 0, y: 580, w: 800, h: 20 },
+                    { x: 0, y: 0, w: 20, h: 600 },
+                    { x: 780, y: 0, w: 20, h: 600 },
+                    // Inner walls
+                    { x: 200, y: 100, w: 20, h: 200 },
+                    { x: 400, y: 0, w: 20, h: 150 },
+                    { x: 400, y: 250, w: 20, h: 150 },
+                    { x: 580, y: 200, w: 20, h: 300 },
+                    { x: 200, y: 400, w: 300, h: 20 },
+                    { x: 100, y: 300, w: 100, h: 20 }
+                ],
+                guards: [
+                    { x: 300, y: 150, patrolPoints: [{x: 300, y: 150}, {x: 300, y: 350}], speed: 1.5 },
+                    { x: 500, y: 450, patrolPoints: [{x: 500, y: 450}, {x: 700, y: 450}], speed: 1.2 }
+                ],
+                cameras: [
+                    { x: 220, y: 100, angle: Math.PI / 2, sweep: Math.PI / 2, sweepSpeed: 0.02 },
+                    { x: 580, y: 200, angle: Math.PI, sweep: Math.PI / 3, sweepSpeed: 0.015 }
+                ],
+                objectives: [
+                    { x: 350, y: 200 },
+                    { x: 650, y: 350 }
+                ],
+                playerStart: { x: 60, y: 60 },
+                exit: { x: 720, y: 520 }
+            },
+            {
+                walls: [
+                    { x: 0, y: 0, w: 800, h: 20 },
+                    { x: 0, y: 580, w: 800, h: 20 },
+                    { x: 0, y: 0, w: 20, h: 600 },
+                    { x: 780, y: 0, w: 20, h: 600 },
+                    { x: 150, y: 100, w: 20, h: 400 },
+                    { x: 300, y: 100, w: 20, h: 300 },
+                    { x: 300, y: 100, w: 200, h: 20 },
+                    { x: 450, y: 200, w: 20, h: 300 },
+                    { x: 600, y: 100, w: 20, h: 400 },
+                    { x: 200, y: 500, w: 400, h: 20 }
+                ],
+                guards: [
+                    { x: 220, y: 200, patrolPoints: [{x: 220, y: 200}, {x: 220, y: 450}], speed: 1.8 },
+                    { x: 370, y: 300, patrolPoints: [{x: 370, y: 200}, {x: 370, y: 450}], speed: 1.5 },
+                    { x: 520, y: 250, patrolPoints: [{x: 520, y: 250}, {x: 520, y: 500}], speed: 1.6 },
+                    { x: 700, y: 300, patrolPoints: [{x: 700, y: 100}, {x: 700, y: 500}], speed: 2 }
+                ],
+                cameras: [
+                    { x: 150, y: 100, angle: 0, sweep: Math.PI / 2, sweepSpeed: 0.025 },
+                    { x: 450, y: 200, angle: Math.PI, sweep: Math.PI / 2, sweepSpeed: 0.02 },
+                    { x: 600, y: 500, angle: -Math.PI / 2, sweep: Math.PI / 3, sweepSpeed: 0.03 }
+                ],
+                objectives: [
+                    { x: 230, y: 350 },
+                    { x: 380, y: 400 },
+                    { x: 530, y: 350 }
+                ],
+                playerStart: { x: 60, y: 300 },
+                exit: { x: 720, y: 520 }
+            },
+            {
+                walls: [
+                    { x: 0, y: 0, w: 800, h: 20 },
+                    { x: 0, y: 580, w: 800, h: 20 },
+                    { x: 0, y: 0, w: 20, h: 600 },
+                    { x: 780, y: 0, w: 20, h: 600 },
+                    { x: 100, y: 150, w: 200, h: 20 },
+                    { x: 100, y: 150, w: 20, h: 150 },
+                    { x: 350, y: 100, w: 20, h: 200 },
+                    { x: 350, y: 100, w: 150, h: 20 },
+                    { x: 500, y: 200, w: 200, h: 20 },
+                    { x: 200, y: 350, w: 20, h: 200 },
+                    { x: 200, y: 350, w: 200, h: 20 },
+                    { x: 450, y: 400, w: 20, h: 180 },
+                    { x: 550, y: 300, w: 20, h: 200 },
+                    { x: 650, y: 350, w: 130, h: 20 }
+                ],
+                guards: [
+                    { x: 200, y: 80, patrolPoints: [{x: 100, y: 80}, {x: 300, y: 80}], speed: 2 },
+                    { x: 450, y: 250, patrolPoints: [{x: 400, y: 250}, {x: 550, y: 250}, {x: 550, y: 350}, {x: 400, y: 350}], speed: 1.8 },
+                    { x: 300, y: 450, patrolPoints: [{x: 250, y: 450}, {x: 400, y: 450}], speed: 1.5 },
+                    { x: 650, y: 250, patrolPoints: [{x: 600, y: 100}, {x: 750, y: 100}, {x: 750, y: 300}, {x: 600, y: 300}], speed: 2.2 },
+                    { x: 650, y: 500, patrolPoints: [{x: 500, y: 500}, {x: 750, y: 500}], speed: 1.8 }
+                ],
+                cameras: [
+                    { x: 100, y: 150, angle: Math.PI / 4, sweep: Math.PI / 2, sweepSpeed: 0.02 },
+                    { x: 350, y: 300, angle: 0, sweep: Math.PI / 2, sweepSpeed: 0.025 },
+                    { x: 550, y: 300, angle: Math.PI, sweep: Math.PI / 2, sweepSpeed: 0.02 },
+                    { x: 700, y: 350, angle: -Math.PI / 2, sweep: Math.PI / 3, sweepSpeed: 0.03 }
+                ],
+                objectives: [
+                    { x: 150, y: 250 },
+                    { x: 430, y: 180 },
+                    { x: 650, y: 150 },
+                    { x: 350, y: 500 }
+                ],
+                playerStart: { x: 60, y: 550 },
+                exit: { x: 720, y: 450 }
+            }
+        ];
+
+        function loadLevel(levelNum) {
+            const level = levels[(levelNum - 1) % levels.length];
+            gameState.walls = [...level.walls];
+            gameState.guards = level.guards.map(g => ({
+                ...g,
+                patrolIndex: 0,
+                direction: 1,
+                angle: 0
+            }));
+            gameState.cameras = level.cameras.map(c => ({
+                ...c,
+                baseAngle: c.angle,
+                currentAngle: c.angle,
+                sweepDir: 1
+            }));
+            gameState.objectives = level.objectives.map(o => ({ ...o, collected: false }));
+            gameState.totalObjectives = level.objectives.length;
+            gameState.objectivesCollected = 0;
+            gameState.player.x = level.playerStart.x;
+            gameState.player.y = level.playerStart.y;
+            gameState.exit = { ...level.exit };
+            gameState.detected = false;
+            gameState.detectionTimer = 0;
+            gameState.proxyCharge = 100;
+            gameState.proxyCooldown = 0;
+            gameState.proxyActive = 0;
+            gameState.player.disguised = false;
+            gameState.particles = [];
+        }
+
+        function init() {
+            gameState.level = 1;
+            gameState.score = 0;
+            gameState.gameOver = false;
+            gameState.won = false;
+            loadLevel(1);
+        }
+
+        function createParticle(x, y, color, type = 'spark') {
+            gameState.particles.push({
+                x, y,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                life: 30 + Math.random() * 20,
+                maxLife: 50,
+                color,
+                size: type === 'spark' ? 3 : 6,
+                type
+            });
+        }
+
+        function checkWallCollision(x, y, size) {
+            for (let wall of gameState.walls) {
+                if (x + size/2 > wall.x && x - size/2 < wall.x + wall.w &&
+                    y + size/2 > wall.y && y - size/2 < wall.y + wall.h) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function lineIntersectsWall(x1, y1, x2, y2) {
+            for (let wall of gameState.walls) {
+                if (lineIntersectsRect(x1, y1, x2, y2, wall.x, wall.y, wall.w, wall.h)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function lineIntersectsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
+            // Check if line intersects rectangle
+            const left = lineIntersectsLine(x1, y1, x2, y2, rx, ry, rx, ry + rh);
+            const right = lineIntersectsLine(x1, y1, x2, y2, rx + rw, ry, rx + rw, ry + rh);
+            const top = lineIntersectsLine(x1, y1, x2, y2, rx, ry, rx + rw, ry);
+            const bottom = lineIntersectsLine(x1, y1, x2, y2, rx, ry + rh, rx + rw, ry + rh);
+            return left || right || top || bottom;
+        }
+
+        function lineIntersectsLine(x1, y1, x2, y2, x3, y3, x4, y4) {
+            const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+            if (Math.abs(denom) < 0.0001) return false;
+            const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+            const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
+            return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
+        }
+
+        function pointInCone(px, py, cx, cy, angle, range, fov) {
+            const dx = px - cx;
+            const dy = py - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > range) return false;
+
+            const angleToPlayer = Math.atan2(dy, dx);
+            let angleDiff = angleToPlayer - angle;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+            return Math.abs(angleDiff) < fov / 2;
+        }
+
+        function updatePlayer() {
+            if (gameState.gameOver || gameState.won) return;
+
+            let dx = 0, dy = 0;
+            if (keys['ArrowUp'] || keys['KeyW']) dy = -1;
+            if (keys['ArrowDown'] || keys['KeyS']) dy = 1;
+            if (keys['ArrowLeft'] || keys['KeyA']) dx = -1;
+            if (keys['ArrowRight'] || keys['KeyD']) dx = 1;
+
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.707;
+                dy *= 0.707;
+            }
+
+            const speed = gameState.player.disguised ? gameState.player.speed * 0.7 : gameState.player.speed;
+            const newX = gameState.player.x + dx * speed;
+            const newY = gameState.player.y + dy * speed;
+
+            if (!checkWallCollision(newX, gameState.player.y, PLAYER_SIZE)) {
+                gameState.player.x = newX;
+            }
+            if (!checkWallCollision(gameState.player.x, newY, PLAYER_SIZE)) {
+                gameState.player.y = newY;
+            }
+
+            // Proxy ability
+            if (gameState.proxyCooldown > 0) {
+                gameState.proxyCooldown--;
+                gameState.proxyCharge = Math.min(100, 100 - (gameState.proxyCooldown / PROXY_COOLDOWN) * 100);
+            }
+
+            if (gameState.proxyActive > 0) {
+                gameState.proxyActive--;
+                gameState.player.disguised = true;
+                if (Math.random() < 0.3) {
+                    createParticle(gameState.player.x, gameState.player.y, '#00ffff', 'spark');
+                }
+                if (gameState.proxyActive === 0) {
+                    gameState.player.disguised = false;
+                    gameState.proxyCooldown = PROXY_COOLDOWN;
+                }
+            }
+
+            // Check objective collection
+            for (let obj of gameState.objectives) {
+                if (!obj.collected) {
+                    const dx = gameState.player.x - obj.x;
+                    const dy = gameState.player.y - obj.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < 25) {
+                        obj.collected = true;
+                        gameState.objectivesCollected++;
+                        gameState.score += 100;
+                        for (let i = 0; i < 15; i++) {
+                            createParticle(obj.x, obj.y, '#ffff00', 'collect');
+                        }
+                    }
+                }
+            }
+
+            // Check exit
+            if (gameState.objectivesCollected >= gameState.totalObjectives) {
+                const dx = gameState.player.x - gameState.exit.x;
+                const dy = gameState.player.y - gameState.exit.y;
+                if (Math.sqrt(dx*dx + dy*dy) < 30) {
+                    gameState.score += 500 + (gameState.level * 100);
+                    if (gameState.level >= levels.length) {
+                        gameState.won = true;
+                        if (gameState.score > highScore) {
+                            highScore = gameState.score;
+                            localStorage.setItem('proxyHighScore', highScore);
+                        }
+                    } else {
+                        gameState.level++;
+                        loadLevel(gameState.level);
+                    }
+                }
+            }
+        }
+
+        function updateGuards() {
+            for (let guard of gameState.guards) {
+                const target = guard.patrolPoints[guard.patrolIndex];
+                const dx = target.x - guard.x;
+                const dy = target.y - guard.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 5) {
+                    guard.patrolIndex = (guard.patrolIndex + 1) % guard.patrolPoints.length;
+                } else {
+                    guard.x += (dx / dist) * guard.speed;
+                    guard.y += (dy / dist) * guard.speed;
+                    guard.angle = Math.atan2(dy, dx);
+                }
+
+                // Check if guard sees player
+                if (!gameState.player.disguised) {
+                    const pdx = gameState.player.x - guard.x;
+                    const pdy = gameState.player.y - guard.y;
+                    const pDist = Math.sqrt(pdx * pdx + pdy * pdy);
+
+                    if (pDist < VISION_RANGE) {
+                        const angleToPlayer = Math.atan2(pdy, pdx);
+                        let angleDiff = angleToPlayer - guard.angle;
+                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+                        if (Math.abs(angleDiff) < Math.PI / 3) {
+                            if (!lineIntersectsWall(guard.x, guard.y, gameState.player.x, gameState.player.y)) {
+                                gameState.detected = true;
+                                gameState.detectionTimer = 60;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function updateCameras() {
+            for (let cam of gameState.cameras) {
+                cam.currentAngle += cam.sweepSpeed * cam.sweepDir;
+                const diff = cam.currentAngle - cam.baseAngle;
+                if (Math.abs(diff) > cam.sweep / 2) {
+                    cam.sweepDir *= -1;
+                }
+
+                // Check if camera sees player
+                if (!gameState.player.disguised) {
+                    if (pointInCone(gameState.player.x, gameState.player.y, cam.x, cam.y, cam.currentAngle, VISION_RANGE * 1.5, cam.sweep)) {
+                        if (!lineIntersectsWall(cam.x, cam.y, gameState.player.x, gameState.player.y)) {
+                            gameState.detected = true;
+                            gameState.detectionTimer = 60;
+                        }
+                    }
+                }
+            }
+        }
+
+        function updateParticles() {
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const p = gameState.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) {
+                    gameState.particles.splice(i, 1);
+                }
+            }
+        }
+
+        function updateGame() {
+            if (gameState.gameOver || gameState.won) return;
+
+            updatePlayer();
+            updateGuards();
+            updateCameras();
+            updateParticles();
+
+            if (gameState.detected) {
+                gameState.detectionTimer--;
+                if (gameState.detectionTimer <= 0) {
+                    gameState.gameOver = true;
+                    if (gameState.score > highScore) {
+                        highScore = gameState.score;
+                        localStorage.setItem('proxyHighScore', highScore);
+                    }
+                }
+            }
+        }
+
+        function drawVisionCone(x, y, angle, range, fov, color) {
+            ctx.save();
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.arc(x, y, range, angle - fov/2, angle + fov/2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function draw() {
+            // Clear with dark background
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += TILE_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += TILE_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw walls
+            ctx.fillStyle = '#1a1a3a';
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 2;
+            for (let wall of gameState.walls) {
+                ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+                ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
+            }
+
+            // Draw camera vision cones
+            for (let cam of gameState.cameras) {
+                const visionColor = gameState.detected ? '#ff4444' : '#ffaa00';
+                drawVisionCone(cam.x, cam.y, cam.currentAngle, VISION_RANGE * 1.5, cam.sweep, visionColor);
+            }
+
+            // Draw guard vision cones
+            for (let guard of gameState.guards) {
+                const visionColor = gameState.detected ? '#ff4444' : '#ff6600';
+                drawVisionCone(guard.x, guard.y, guard.angle, VISION_RANGE, Math.PI * 2/3, visionColor);
+            }
+
+            // Draw exit
+            const exitColor = gameState.objectivesCollected >= gameState.totalObjectives ? '#00ff88' : '#444444';
+            ctx.fillStyle = exitColor;
+            ctx.shadowColor = exitColor;
+            ctx.shadowBlur = gameState.objectivesCollected >= gameState.totalObjectives ? 15 : 0;
+            ctx.beginPath();
+            ctx.arc(gameState.exit.x, gameState.exit.y, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 16px Courier New';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('EXIT', gameState.exit.x, gameState.exit.y);
+            ctx.shadowBlur = 0;
+
+            // Draw objectives
+            for (let obj of gameState.objectives) {
+                if (!obj.collected) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.shadowColor = '#ffff00';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(obj.x, obj.y, 12, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Diamond shape
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.moveTo(obj.x, obj.y - 6);
+                    ctx.lineTo(obj.x + 5, obj.y);
+                    ctx.lineTo(obj.x, obj.y + 6);
+                    ctx.lineTo(obj.x - 5, obj.y);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            // Draw cameras
+            for (let cam of gameState.cameras) {
+                ctx.fillStyle = '#ff4400';
+                ctx.strokeStyle = '#ffaa00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(cam.x, cam.y, CAMERA_SIZE / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Camera lens
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(cam.x + Math.cos(cam.currentAngle) * 6,
+                       cam.y + Math.sin(cam.currentAngle) * 6, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw guards
+            for (let guard of gameState.guards) {
+                ctx.fillStyle = '#cc0000';
+                ctx.strokeStyle = '#ff4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(guard.x, guard.y, GUARD_SIZE / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Guard direction indicator
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(guard.x, guard.y);
+                ctx.lineTo(guard.x + Math.cos(guard.angle) * 15, guard.y + Math.sin(guard.angle) * 15);
+                ctx.stroke();
+            }
+
+            // Draw player
+            const playerColor = gameState.player.disguised ? '#00ffff' : '#00ff88';
+            ctx.fillStyle = playerColor;
+            ctx.shadowColor = playerColor;
+            ctx.shadowBlur = gameState.player.disguised ? 20 : 10;
+            ctx.beginPath();
+            ctx.arc(gameState.player.x, gameState.player.y, PLAYER_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Player inner circle
+            ctx.fillStyle = gameState.player.disguised ? 'rgba(0, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
+            ctx.beginPath();
+            ctx.arc(gameState.player.x, gameState.player.y, PLAYER_SIZE / 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw particles
+            for (let p of gameState.particles) {
+                ctx.globalAlpha = p.life / p.maxLife;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Draw UI
+            ctx.fillStyle = '#00ff88';
+            ctx.font = 'bold 18px Courier New';
+            ctx.textAlign = 'left';
+            ctx.fillText(`LEVEL ${gameState.level}`, 20, 35);
+            ctx.fillText(`SCORE: ${gameState.score}`, 20, 55);
+
+            ctx.textAlign = 'center';
+            ctx.fillText(`DATA: ${gameState.objectivesCollected}/${gameState.totalObjectives}`, canvas.width / 2, 35);
+
+            ctx.textAlign = 'right';
+            ctx.fillText(`HIGH: ${highScore}`, canvas.width - 20, 35);
+
+            // Proxy meter
+            ctx.fillStyle = '#333';
+            ctx.fillRect(canvas.width - 120, 45, 100, 15);
+            const proxyColor = gameState.proxyActive > 0 ? '#00ffff' :
+                              gameState.proxyCharge >= 100 ? '#00ff88' : '#666';
+            ctx.fillStyle = proxyColor;
+            ctx.fillRect(canvas.width - 120, 45, gameState.proxyCharge, 15);
+            ctx.strokeStyle = '#00ff88';
+            ctx.strokeRect(canvas.width - 120, 45, 100, 15);
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Courier New';
+            ctx.fillText('HOLIHAN', canvas.width - 70, 56);
+
+            // Detection warning
+            if (gameState.detected && !gameState.gameOver) {
+                ctx.fillStyle = `rgba(255, 0, 0, ${0.3 + Math.sin(Date.now() / 100) * 0.2})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ff0000';
+                ctx.font = 'bold 36px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('! DETECTED !', canvas.width / 2, canvas.height / 2 - 50);
+                ctx.font = '20px Courier New';
+                ctx.fillText(`Alarm in: ${Math.ceil(gameState.detectionTimer / 60)}`, canvas.width / 2, canvas.height / 2);
+            }
+
+            // Game over screen
+            if (gameState.gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ff0000';
+                ctx.font = 'bold 48px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('CAPTURED', canvas.width / 2, canvas.height / 2 - 30);
+                ctx.fillStyle = '#00ff88';
+                ctx.font = '24px Courier New';
+                ctx.fillText(`Final Score: ${gameState.score}`, canvas.width / 2, canvas.height / 2 + 20);
+                ctx.font = '18px Courier New';
+                ctx.fillText('Press R to retry', canvas.width / 2, canvas.height / 2 + 60);
+            }
+
+            // Victory screen
+            if (gameState.won) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#00ff88';
+                ctx.font = 'bold 48px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('MISSION COMPLETE', canvas.width / 2, canvas.height / 2 - 30);
+                ctx.font = '24px Courier New';
+                ctx.fillText(`Final Score: ${gameState.score}`, canvas.width / 2, canvas.height / 2 + 20);
+                ctx.font = '18px Courier New';
+                ctx.fillText('Press R to play again', canvas.width / 2, canvas.height / 2 + 60);
+            }
+
+            // Scanline effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+            for (let y = 0; y < canvas.height; y += 4) {
+                ctx.fillRect(0, y, canvas.width, 2);
+            }
+        }
+
+        function gameLoop() {
+            updateGame();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+
+            if (e.code === 'Space' && !gameState.player.disguised && gameState.proxyCharge >= 100 && gameState.proxyCooldown === 0) {
+                gameState.proxyActive = PROXY_DURATION;
+                gameState.proxyCharge = 0;
+                for (let i = 0; i < 20; i++) {
+                    createParticle(gameState.player.x, gameState.player.y, '#00ffff', 'spark');
+                }
+            }
+
+            if (e.code === 'KeyR') {
+                init();
+            }
+
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // Start game
+        init();
+        gameLoop();
+    </script>
+</body>
+</html>
