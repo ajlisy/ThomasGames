@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candy Wars</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        #gameContainer {
+            width: 100%;
+            max-width: 500px;
+            background: #001a00;
+            border: 4px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+        #screen {
+            background: #000;
+            color: #00ff00;
+            font-size: 14px;
+            line-height: 1.4;
+            padding: 15px;
+            min-height: 400px;
+            border: 2px solid #004400;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+        .title {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        .menu-item {
+            cursor: pointer;
+            padding: 2px 0;
+        }
+        .menu-item:hover {
+            background: #003300;
+        }
+        .highlight {
+            color: #ffff00;
+        }
+        .warning {
+            color: #ff6600;
+        }
+        .danger {
+            color: #ff0000;
+        }
+        .success {
+            color: #00ffff;
+        }
+        #inputArea {
+            display: flex;
+            gap: 10px;
+        }
+        #userInput {
+            flex: 1;
+            background: #000;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            padding: 10px;
+            outline: none;
+        }
+        #userInput:focus {
+            border-color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+        #submitBtn {
+            background: #004400;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #submitBtn:hover {
+            background: #006600;
+        }
+        #backButton {
+            margin-top: 15px;
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            background: #002200;
+            color: #00ff00;
+            border: 2px solid #004400;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #backButton:hover {
+            background: #003300;
+            border-color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="screen"></div>
+        <div id="inputArea">
+            <input type="text" id="userInput" placeholder="Enter command..." autofocus>
+            <button id="submitBtn">OK</button>
+        </div>
+        <button id="backButton" onclick="window.location.href='index.html'">Back to Menu</button>
+    </div>
+
+    <script src="leaderboard.js"></script>
+    <script>
+        const screen = document.getElementById('screen');
+        const userInput = document.getElementById('userInput');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Candy types (replacing drugs)
+        const CANDIES = {
+            gummyBears: { name: 'Gummy Bears', minPrice: 15, maxPrice: 90 },
+            sourPatch: { name: 'Sour Patch Kids', minPrice: 50, maxPrice: 300 },
+            popRocks: { name: 'Pop Rocks', minPrice: 100, maxPrice: 700 },
+            jawbreakers: { name: 'Jawbreakers', minPrice: 200, maxPrice: 1200 },
+            pixieSticks: { name: 'Pixie Sticks', minPrice: 10, maxPrice: 60 },
+            rockCandy: { name: 'Rock Candy', minPrice: 500, maxPrice: 3000 },
+            chocolateTruffles: { name: 'Chocolate Truffles', minPrice: 1000, maxPrice: 6000 },
+            lollipops: { name: 'Lollipops', minPrice: 5, maxPrice: 40 }
+        };
+
+        // Locations
+        const LOCATIONS = [
+            'School Playground',
+            'Corner Store',
+            'Mall Food Court',
+            'Movie Theater',
+            'Carnival',
+            'Neighborhood Block'
+        ];
+
+        // Game state
+        let gameState = {
+            day: 1,
+            maxDays: 30,
+            cash: 2000,
+            debt: 5500,
+            bank: 0,
+            health: 100,
+            maxInventory: 100,
+            location: 0,
+            inventory: {},
+            prices: {},
+            gameOver: false,
+            gameStarted: false,
+            currentScreen: 'title',
+            inputCallback: null,
+            highScore: parseInt(localStorage.getItem('candyWarsHighScore')) || 0
+        };
+
+        function initInventory() {
+            gameState.inventory = {};
+            for (let candy in CANDIES) {
+                gameState.inventory[candy] = 0;
+            }
+        }
+
+        function generatePrices() {
+            gameState.prices = {};
+            for (let candy in CANDIES) {
+                const c = CANDIES[candy];
+                let price = Math.floor(Math.random() * (c.maxPrice - c.minPrice) + c.minPrice);
+
+                // Random price spikes/crashes
+                if (Math.random() < 0.1) {
+                    price = Math.floor(price * 3); // Spike!
+                } else if (Math.random() < 0.1) {
+                    price = Math.floor(price * 0.3); // Crash!
+                }
+
+                gameState.prices[candy] = price;
+            }
+        }
+
+        function getInventoryCount() {
+            let total = 0;
+            for (let candy in gameState.inventory) {
+                total += gameState.inventory[candy];
+            }
+            return total;
+        }
+
+        function formatMoney(amount) {
+            return '$' + amount.toLocaleString();
+        }
+
+        function cls() {
+            screen.innerHTML = '';
+        }
+
+        function print(text, className = '') {
+            const span = document.createElement('span');
+            if (className) span.className = className;
+            span.textContent = text + '\n';
+            screen.appendChild(span);
+            screen.scrollTop = screen.scrollHeight;
+        }
+
+        function printLine() {
+            print('═'.repeat(40));
+        }
+
+        function showTitle() {
+            cls();
+            gameState.currentScreen = 'title';
+            print('');
+            print('   ╔═══════════════════════════════╗');
+            print('   ║                               ║');
+            print('   ║       C A N D Y   W A R S     ║');
+            print('   ║                               ║');
+            print('   ║   A Sweet Trading Adventure   ║');
+            print('   ║                               ║');
+            print('   ╚═══════════════════════════════╝');
+            print('');
+            print('  Based on the classic TI-83 game');
+            print('');
+            if (gameState.highScore > 0) {
+                print('  High Score: ' + formatMoney(gameState.highScore), 'success');
+                print('');
+            }
+            print('  You have 30 days to make as much');
+            print('  money as possible trading candy!');
+            print('');
+            print('  Watch out for hall monitors and');
+            print('  pay back your debt to the Candy');
+            print('  King before time runs out!');
+            print('');
+            printLine();
+            print('');
+            print('  Press [ENTER] or type "start"');
+            print('  to begin your adventure!');
+
+            gameState.inputCallback = (input) => {
+                if (input === '' || input.toLowerCase() === 'start') {
+                    startNewGame();
+                }
+            };
+        }
+
+        function startNewGame() {
+            gameState = {
+                day: 1,
+                maxDays: 30,
+                cash: 2000,
+                debt: 5500,
+                bank: 0,
+                health: 100,
+                maxInventory: 100,
+                location: 0,
+                inventory: {},
+                prices: {},
+                gameOver: false,
+                gameStarted: true,
+                currentScreen: 'main',
+                inputCallback: null,
+                highScore: gameState.highScore,
+                coatUpgrade: false,
+                gunOwned: false
+            };
+            initInventory();
+            generatePrices();
+            showMainMenu();
+        }
+
+        function showMainMenu() {
+            cls();
+            gameState.currentScreen = 'main';
+
+            print('╔═══════════════════════════════════════╗');
+            print('║  CANDY WARS - Day ' + gameState.day + '/' + gameState.maxDays + '                  ║'.slice(0, 41 - String(gameState.day).length - String(gameState.maxDays).length) + '║');
+            print('╠═══════════════════════════════════════╣');
+            print('║  Location: ' + LOCATIONS[gameState.location].padEnd(27) + '║');
+            print('╠═══════════════════════════════════════╣');
+            print('║  Cash:   ' + formatMoney(gameState.cash).padEnd(29) + '║');
+            print('║  Bank:   ' + formatMoney(gameState.bank).padEnd(29) + '║');
+            print('║  Debt:   ' + formatMoney(gameState.debt).padEnd(29) + '║');
+            print('║  Health: ' + (gameState.health + '%').padEnd(29) + '║');
+            print('║  Space:  ' + (getInventoryCount() + '/' + gameState.maxInventory).padEnd(29) + '║');
+            print('╚═══════════════════════════════════════╝');
+            print('');
+            print('What would you like to do?');
+            print('');
+            print('  [B]uy candy');
+            print('  [S]ell candy');
+            print('  [J]et to another location');
+            print('  [V]isit the bank');
+            print('  [L]oan shark (pay debt)');
+            print('  [I]nventory');
+            print('  [P]rices');
+            print('  [H]elp');
+            print('');
+            print('Enter choice: ', '');
+
+            gameState.inputCallback = (input) => {
+                const choice = input.toLowerCase();
+                switch(choice) {
+                    case 'b': case 'buy': showBuyMenu(); break;
+                    case 's': case 'sell': showSellMenu(); break;
+                    case 'j': case 'jet': showTravelMenu(); break;
+                    case 'v': case 'bank': showBankMenu(); break;
+                    case 'l': case 'loan': showLoanShark(); break;
+                    case 'i': case 'inv': case 'inventory': showInventory(); break;
+                    case 'p': case 'prices': showPrices(); break;
+                    case 'h': case 'help': showHelp(); break;
+                    default: showMainMenu();
+                }
+            };
+        }
+
+        function showPrices() {
+            cls();
+            gameState.currentScreen = 'prices';
+
+            print('╔═══════════════════════════════════════╗');
+            print('║       CURRENT CANDY PRICES            ║');
+            print('║       ' + LOCATIONS[gameState.location].padEnd(32) + '║');
+            print('╠═══════════════════════════════════════╣');
+
+            let i = 1;
+            for (let candy in CANDIES) {
+                const c = CANDIES[candy];
+                const price = gameState.prices[candy];
+                const owned = gameState.inventory[candy];
+
+                // Highlight good deals
+                let priceStr = formatMoney(price);
+                let indicator = '';
+                if (price < c.minPrice + (c.maxPrice - c.minPrice) * 0.2) {
+                    indicator = ' [LOW!]';
+                } else if (price > c.minPrice + (c.maxPrice - c.minPrice) * 0.8) {
+                    indicator = ' [HIGH!]';
+                }
+
+                print('║  ' + c.name.padEnd(20) + priceStr.padEnd(10) + ('x' + owned).padEnd(5) + indicator.padEnd(5) + '║');
+                i++;
+            }
+
+            print('╚═══════════════════════════════════════╝');
+            print('');
+            print('[ENTER] to go back');
+
+            gameState.inputCallback = () => showMainMenu();
+        }
+
+        function showBuyMenu() {
+            cls();
+            gameState.currentScreen = 'buy';
+
+            print('╔═══════════════════════════════════════╗');
+            print('║           BUY CANDY                   ║');
+            print('╠═══════════════════════════════════════╣');
+            print('║  Cash: ' + formatMoney(gameState.cash).padEnd(31) + '║');
+            print('║  Space: ' + ((gameState.maxInventory - getInventoryCount()) + ' slots left').padEnd(30) + '║');
+            print('╠═══════════════════════════════════════╣');
+
+            let i = 1;
+            for (let candy in CANDIES) {
+                const price = gameState.prices[candy];
+                print('║  [' + i + '] ' + CANDIES[candy].name.padEnd(22) + formatMoney(price).padEnd(10) + '║');
+                i++;
+            }
+
+            print('╚═══════════════════════════════════════╝');
+            print('');
+            print('Enter number to buy (0 to cancel): ');
+
+            gameState.inputCallback = (input) => {
+                const choice = parseInt(input);
+                if (choice === 0 || isNaN(choice)) {
+                    showMainMenu();
+                    return;
+                }
+
+                const candyKeys = Object.keys(CANDIES);
+                if (choice < 1 || choice > candyKeys.length) {
+                    showMainMenu();
+                    return;
+                }
+
+                const selectedCandy = candyKeys[choice - 1];
+                askBuyAmount(selectedCandy);
+            };
+        }
+
+        function askBuyAmount(candy) {
+            cls();
+            const price = gameState.prices[candy];
+            const maxAfford = Math.floor(gameState.cash / price);
+            const spaceLeft = gameState.maxInventory - getInventoryCount();
+            const maxCanBuy = Math.min(maxAfford, spaceLeft);
+
+            print('Buy ' + CANDIES[candy].name);
+            print('');
+            print('Price: ' + formatMoney(price) + ' each');
+            print('You can afford: ' + maxAfford);
+            print('Space available: ' + spaceLeft);
+            print('');
+            print('How many? (0 to cancel, "max" for ' + maxCanBuy + ')');
+
+            gameState.inputCallback = (input) => {
+                let amount;
+                if (input.toLowerCase() === 'max') {
+                    amount = maxCanBuy;
+                } else {
+                    amount = parseInt(input);
+                }
+
+                if (isNaN(amount) || amount <= 0) {
+                    showBuyMenu();
+                    return;
+                }
+
+                if (amount > maxAfford) {
+                    cls();
+                    print('You cannot afford that many!', 'danger');
+                    print('');
+                    print('[ENTER] to continue');
+                    gameState.inputCallback = () => showBuyMenu();
+                    return;
+                }
+
+                if (amount > spaceLeft) {
+                    cls();
+                    print('Not enough space in your backpack!', 'danger');
+                    print('');
+                    print('[ENTER] to continue');
+                    gameState.inputCallback = () => showBuyMenu();
+                    return;
+                }
+
+                const cost = amount * price;
+                gameState.cash -= cost;
+                gameState.inventory[candy] += amount;
+
+                cls();
+                print('Bought ' + amount + ' ' + CANDIES[candy].name + '!', 'success');
+                print('Cost: ' + formatMoney(cost));
+                print('');
+                print('[ENTER] to continue');
+                gameState.inputCallback = () => showMainMenu();
+            };
+        }
+
+        function showSellMenu() {
+            cls();
+            gameState.currentScreen = 'sell';
+
+            print('╔═══════════════════════════════════════╗');
+            print('║           SELL CANDY                  ║');
+            print('╠═══════════════════════════════════════╣');
+
+            let i = 1;
+            let hasItems = false;
+            for (let candy in CANDIES) {
+                const owned = gameState.inventory[candy];
+                if (owned > 0) {
+                    hasItems = true;
+                    const price = gameState.prices[candy];
+                    print('║  [' + i + '] ' + CANDIES[candy].name.padEnd(15) + ('x' + owned).padEnd(7) + formatMoney(price).padEnd(10) + '║');
+                }
+                i++;
+            }
+
+            if (!hasItems) {
+                print('║  You have no candy to sell!           ║');
+            }
+
+            print('╚═══════════════════════════════════════╝');
+            print('');
+            print('Enter number to sell (0 to cancel): ');
+
+            gameState.inputCallback = (input) => {
+                const choice = parseInt(input);
+                if (choice === 0 || isNaN(choice)) {
+                    showMainMenu();
+                    return;
+                }
+
+                const candyKeys = Object.keys(CANDIES);
+                if (choice < 1 || choice > candyKeys.length) {
+                    showMainMenu();
+                    return;
+                }
+
+                const selectedCandy = candyKeys[choice - 1];
+                if (gameState.inventory[selectedCandy] <= 0) {
+                    showMainMenu();
+                    return;
+                }
+
+                askSellAmount(selectedCandy);
+            };
+        }
+
+        function askSellAmount(candy) {
+            cls();
+            const price = gameState.prices[candy];
+            const owned = gameState.inventory[candy];
+
+            print('Sell ' + CANDIES[candy].name);
+            print('');
+            print('Price: ' + formatMoney(price) + ' each');
+            print('You have: ' + owned);
+            print('Total value: ' + formatMoney(price * owned));
+            print('');
+            print('How many? (0 to cancel, "all" for ' + owned + ')');
+
+            gameState.inputCallback = (input) => {
+                let amount;
+                if (input.toLowerCase() === 'all') {
+                    amount = owned;
+                } else {
+                    amount = parseInt(input);
+                }
+
+                if (isNaN(amount) || amount <= 0) {
+                    showSellMenu();
+                    return;
+                }
+
+                if (amount > owned) {
+                    cls();
+                    print('You don\'t have that many!', 'danger');
+                    print('');
+                    print('[ENTER] to continue');
+                    gameState.inputCallback = () => showSellMenu();
+                    return;
+                }
+
+                const earnings = amount * price;
+                gameState.cash += earnings;
+                gameState.inventory[candy] -= amount;
+
+                cls();
+                print('Sold ' + amount + ' ' + CANDIES[candy].name + '!', 'success');
+                print('Earned: ' + formatMoney(earnings));
+                print('');
+                print('[ENTER] to continue');
+                gameState.inputCallback = () => showMainMenu();
+            };
+        }
+
+        function showTravelMenu() {
+            cls();
+            gameState.currentScreen = 'travel';
+
+            print('╔═══════════════════════════════════════╗');
+            print('║        JET TO NEW LOCATION            ║');
+            print('╠═══════════════════════════════════════╣');
+
+            for (let i = 0; i < LOCATIONS.length; i++) {
+                const marker = (i === gameState.location) ? ' (here)' : '';
+                print('║  [' + (i + 1) + '] ' + LOCATIONS[i].padEnd(27) + marker.padEnd(8).slice(0, 8) + '║');
+            }
+
+            print('╚═══════════════════════════════════════╝');
+            print('');
+            print('Traveling uses 1 day!');
+            print('');
+            print('Enter destination (0 to cancel): ');
+
+            gameState.inputCallback = (input) => {
+                const choice = parseInt(input);
+                if (choice === 0 || isNaN(choice)) {
+                    showMainMenu();
+                    return;
+                }
+
+                if (choice < 1 || choice > LOCATIONS.length) {
+                    showMainMenu();
+                    return;
+                }
+
+                if (choice - 1 === gameState.location) {
+                    cls();
+                    print('You\'re already here!', 'warning');
+                    print('');
+                    print('[ENTER] to continue');
+                    gameState.inputCallback = () => showMainMenu();
+                    return;
+                }
+
+                travel(choice - 1);
+            };
+        }
+
+        function travel(newLocation) {
+            gameState.location = newLocation;
+            gameState.day++;
+            generatePrices();
+
+            // Add interest to debt
+            gameState.debt = Math.floor(gameState.debt * 1.05);
+
+            // Random events!
+            if (Math.random() < 0.3) {
+                triggerRandomEvent();
+                return;
+            }
+
+            // Check for game over
+            if (gameState.day > gameState.maxDays) {
+                endGame();
+                return;
+            }
+
+            showMainMenu();
+        }
+
+        function triggerRandomEvent() {
+            const events = [
+                {
+                    name: 'hallMonitor',
+                    weight: 20,
+                    trigger: () => {
+                        cls();
+                        print('!!! HALL MONITOR !!!', 'danger');
+                        print('');
+                        print('A hall monitor spots you with');
+                        print('suspicious candy! You have to');
+                        print('run and drop some merchandise!');
+                        print('');
+
+                        // Lose some random candy
+                        let lost = false;
+                        for (let candy in gameState.inventory) {
+                            if (gameState.inventory[candy] > 0 && Math.random() < 0.5) {
+                                const lostAmount = Math.floor(gameState.inventory[candy] * Math.random() * 0.5);
+                                if (lostAmount > 0) {
+                                    gameState.inventory[candy] -= lostAmount;
+                                    print('Lost ' + lostAmount + ' ' + CANDIES[candy].name + '!', 'warning');
+                                    lost = true;
+                                }
+                            }
+                        }
+
+                        if (!lost) {
+                            print('You managed to hide everything!', 'success');
+                        }
+
+                        print('');
+                        print('[ENTER] to continue');
+                        gameState.inputCallback = () => {
+                            if (gameState.day > gameState.maxDays) {
+                                endGame();
+                            } else {
+                                showMainMenu();
+                            }
+                        };
+                    }
+                },
+                {
+                    name: 'findCandy',
+                    weight: 15,
+                    trigger: () => {
+                        const candyKeys = Object.keys(CANDIES);
+                        const randomCandy = candyKeys[Math.floor(Math.random() * candyKeys.length)];
+                        const amount = Math.floor(Math.random() * 10) + 1;
+                        const spaceLeft = gameState.maxInventory - getInventoryCount();
+                        const actualAmount = Math.min(amount, spaceLeft);
+
+                        cls();
+                        print('LUCKY FIND!', 'success');
+                        print('');
+                        print('You found a stash of candy that');
+                        print('someone left behind!');
+                        print('');
+
+                        if (actualAmount > 0) {
+                            gameState.inventory[randomCandy] += actualAmount;
+                            print('Found ' + actualAmount + ' ' + CANDIES[randomCandy].name + '!', 'success');
+                        } else {
+                            print('But your backpack is full!', 'warning');
+                        }
+
+                        print('');
+                        print('[ENTER] to continue');
+                        gameState.inputCallback = () => {
+                            if (gameState.day > gameState.maxDays) {
+                                endGame();
+                            } else {
+                                showMainMenu();
+                            }
+                        };
+                    }
+                },
+                {
+                    name: 'priceCrash',
+                    weight: 10,
+                    trigger: () => {
+                        const candyKeys = Object.keys(CANDIES);
+                        const randomCandy = candyKeys[Math.floor(Math.random() * candyKeys.length)];
+                        gameState.prices[randomCandy] = Math.floor(gameState.prices[randomCandy] * 0.2);
+
+                        cls();
+                        print('MARKET CRASH!', 'warning');
+                        print('');
+                        print('A truck full of ' + CANDIES[randomCandy].name);
+                        print('crashed nearby! The market is');
+                        print('flooded with cheap candy!');
+                        print('');
+                        print(CANDIES[randomCandy].name + ' now only ' + formatMoney(gameState.prices[randomCandy]) + '!', 'highlight');
+                        print('');
+                        print('[ENTER] to continue');
+                        gameState.inputCallback = () => {
+                            if (gameState.day > gameState.maxDays) {
+                                endGame();
+                            } else {
+                                showMainMenu();
+                            }
+                        };
+                    }
+                },
+                {
+                    name: 'priceSpike',
+                    weight: 10,
+                    trigger: () => {
+                        const candyKeys = Object.keys(CANDIES);
+                        const randomCandy = candyKeys[Math.floor(Math.random() * candyKeys.length)];
+                        gameState.prices[randomCandy] = Math.floor(gameState.prices[randomCandy] * 4);
+
+                        cls();
+                        print('CANDY SHORTAGE!', 'highlight');
+                        print('');
+                        print('There\'s a shortage of');
+                        print(CANDIES[randomCandy].name + '!');
+                        print('Prices are through the roof!');
+                        print('');
+                        print(CANDIES[randomCandy].name + ' now ' + formatMoney(gameState.prices[randomCandy]) + '!', 'success');
+                        print('');
+                        print('[ENTER] to continue');
+                        gameState.inputCallback = () => {
+                            if (gameState.day > gameState.maxDays) {
+                                endGame();
+                            } else {
+                                showMainMenu();
+                            }
+                        };
+                    }
+                },
+                {
+                    name: 'findMoney',
+                    weight: 10,
+                    trigger: () => {
+                        const amount = Math.floor(Math.random() * 500) + 100;
+                        gameState.cash += amount;
+
+                        cls();
+                        print('LUCKY DAY!', 'success');
+                        print('');
+                        print('You found ' + formatMoney(amount));
+                        print('on the ground!');
+                        print('');
+                        print('[ENTER] to continue');
+                        gameState.inputCallback = () => {
+                            if (gameState.day > gameState.maxDays) {
+                                endGame();
+                            } else {
+                                showMainMenu();
+                            }
+                        };
+                    }
+                },
+                {
+                    name: 'mugged',
+                    weight: 8,
+                    trigger: () => {
+                        const amount = Math.floor(gameState.cash * Math.random() * 0.3);
+                        gameState.cash -= amount;
+
+                        cls();
+                        print('MUGGED!', 'danger');
+                        print('');
+                        print('Some older kids cornered you');
+                        print('and took your lunch money!');
+                        print('');
+                        print('Lost ' + formatMoney(amount), 'warning');
+                        print('');
+                        print('[ENTER] to continue');
+                        gameState.inputCallback = () => {
+                            if (gameState.day > gameState.maxDays) {
+                                endGame();
+                            } else {
+                                showMainMenu();
+                            }
+                        };
+                    }
+                },
+                {
+                    name: 'backpackUpgrade',
+                    weight: 5,
+                    trigger: () => {
+                        if (gameState.coatUpgrade) {
+                            // Already have upgrade, give money instead
+                            const amount = 300;
+                            gameState.cash += amount;
+                            cls();
+                            print('FOUND CASH!', 'success');
+                            print('');
+                            print('Found ' + formatMoney(amount) + ' in');
+                            print('an old jacket!');
+                            print('');
+                            print('[ENTER] to continue');
+                        } else {
+                            gameState.maxInventory += 50;
+                            gameState.coatUpgrade = true;
+
+                            cls();
+                            print('BACKPACK UPGRADE!', 'success');
+                            print('');
+                            print('You found a bigger backpack!');
+                            print('');
+                            print('Inventory capacity increased to ' + gameState.maxInventory + '!', 'success');
+                            print('');
+                            print('[ENTER] to continue');
+                        }
+                        gameState.inputCallback = () => {
+                            if (gameState.day > gameState.maxDays) {
+                                endGame();
+                            } else {
+                                showMainMenu();
+                            }
+                        };
+                    }
+                },
+                {
+                    name: 'cheapCandy',
+                    weight: 12,
+                    trigger: () => {
+                        const candyKeys = Object.keys(CANDIES);
+                        const randomCandy = candyKeys[Math.floor(Math.random() * candyKeys.length)];
+                        const cheapPrice = Math.floor(CANDIES[randomCandy].minPrice * 0.3);
+                        const amount = Math.floor(Math.random() * 20) + 5;
+                        const spaceLeft = gameState.maxInventory - getInventoryCount();
+
+                        cls();
+                        print('SPECIAL DEAL!', 'highlight');
+                        print('');
+                        print('A sketchy kid offers you');
+                        print(amount + ' ' + CANDIES[randomCandy].name);
+                        print('for only ' + formatMoney(cheapPrice) + ' each!');
+                        print('');
+                        print('Total cost: ' + formatMoney(cheapPrice * amount));
+                        print('You have: ' + formatMoney(gameState.cash));
+                        print('Space left: ' + spaceLeft);
+                        print('');
+                        print('Buy? (Y/N)');
+
+                        gameState.inputCallback = (input) => {
+                            if (input.toLowerCase() === 'y') {
+                                const maxAfford = Math.floor(gameState.cash / cheapPrice);
+                                const actualAmount = Math.min(amount, maxAfford, spaceLeft);
+
+                                if (actualAmount > 0) {
+                                    gameState.cash -= actualAmount * cheapPrice;
+                                    gameState.inventory[randomCandy] += actualAmount;
+
+                                    cls();
+                                    print('Bought ' + actualAmount + ' ' + CANDIES[randomCandy].name + '!', 'success');
+                                } else {
+                                    cls();
+                                    print('You can\'t afford any or no space!', 'warning');
+                                }
+                            } else {
+                                cls();
+                                print('You passed on the deal.', 'warning');
+                            }
+
+                            print('');
+                            print('[ENTER] to continue');
+                            gameState.inputCallback = () => {
+                                if (gameState.day > gameState.maxDays) {
+                                    endGame();
+                                } else {
+                                    showMainMenu();
+                                }
+                            };
+                        };
+                    }
+                }
+            ];
+
+            // Weighted random selection
+            const totalWeight = events.reduce((sum, e) => sum + e.weight, 0);
+            let random = Math.random() * totalWeight;
+
+            for (let event of events) {
+                random -= event.weight;
+                if (random <= 0) {
+                    event.trigger();
+                    return;
+                }
+            }
+
+            events[0].trigger();
+        }
+
+        function showBankMenu() {
+            cls();
+            gameState.currentScreen = 'bank';
+
+            print('╔═══════════════════════════════════════╗');
+            print('║        FIRST CANDY BANK               ║');
+            print('╠═══════════════════════════════════════╣');
+            print('║  Cash on hand: ' + formatMoney(gameState.cash).padEnd(23) + '║');
+            print('║  Bank balance: ' + formatMoney(gameState.bank).padEnd(23) + '║');
+            print('╚═══════════════════════════════════════╝');
+            print('');
+            print('  [D]eposit cash');
+            print('  [W]ithdraw cash');
+            print('  [B]ack to main menu');
+            print('');
+            print('Enter choice: ');
+
+            gameState.inputCallback = (input) => {
+                const choice = input.toLowerCase();
+                switch(choice) {
+                    case 'd': case 'deposit':
+                        askDeposit();
+                        break;
+                    case 'w': case 'withdraw':
+                        askWithdraw();
+                        break;
+                    default:
+                        showMainMenu();
+                }
+            };
+        }
+
+        function askDeposit() {
+            cls();
+            print('DEPOSIT');
+            print('');
+            print('Cash on hand: ' + formatMoney(gameState.cash));
+            print('');
+            print('How much to deposit? (0 to cancel, "all")');
+
+            gameState.inputCallback = (input) => {
+                let amount;
+                if (input.toLowerCase() === 'all') {
+                    amount = gameState.cash;
+                } else {
+                    amount = parseInt(input);
+                }
+
+                if (isNaN(amount) || amount <= 0) {
+                    showBankMenu();
+                    return;
+                }
+
+                if (amount > gameState.cash) {
+                    cls();
+                    print('You don\'t have that much!', 'danger');
+                    print('');
+                    print('[ENTER] to continue');
+                    gameState.inputCallback = () => showBankMenu();
+                    return;
+                }
+
+                gameState.cash -= amount;
+                gameState.bank += amount;
+
+                cls();
+                print('Deposited ' + formatMoney(amount), 'success');
+                print('');
+                print('[ENTER] to continue');
+                gameState.inputCallback = () => showBankMenu();
+            };
+        }
+
+        function askWithdraw() {
+            cls();
+            print('WITHDRAW');
+            print('');
+            print('Bank balance: ' + formatMoney(gameState.bank));
+            print('');
+            print('How much to withdraw? (0 to cancel, "all")');
+
+            gameState.inputCallback = (input) => {
+                let amount;
+                if (input.toLowerCase() === 'all') {
+                    amount = gameState.bank;
+                } else {
+                    amount = parseInt(input);
+                }
+
+                if (isNaN(amount) || amount <= 0) {
+                    showBankMenu();
+                    return;
+                }
+
+                if (amount > gameState.bank) {
+                    cls();
+                    print('You don\'t have that much in the bank!', 'danger');
+                    print('');
+                    print('[ENTER] to continue');
+                    gameState.inputCallback = () => showBankMenu();
+                    return;
+                }
+
+                gameState.bank -= amount;
+                gameState.cash += amount;
+
+                cls();
+                print('Withdrew ' + formatMoney(amount), 'success');
+                print('');
+                print('[ENTER] to continue');
+                gameState.inputCallback = () => showBankMenu();
+            };
+        }
+
+        function showLoanShark() {
+            cls();
+            gameState.currentScreen = 'loan';
+
+            print('╔═══════════════════════════════════════╗');
+            print('║        THE CANDY KING                 ║');
+            print('╠═══════════════════════════════════════╣');
+            print('║  Your debt: ' + formatMoney(gameState.debt).padEnd(26) + '║');
+            print('║  Your cash: ' + formatMoney(gameState.cash).padEnd(26) + '║');
+            print('║                                       ║');
+            print('║  Interest: 5% per day!                ║');
+            print('╚═══════════════════════════════════════╝');
+            print('');
+
+            if (gameState.debt > 0) {
+                print('"You owe me, kid. Pay up or else!"', 'warning');
+                print('');
+                print('How much to pay? (0 to cancel, "all")');
+
+                gameState.inputCallback = (input) => {
+                    let amount;
+                    if (input.toLowerCase() === 'all') {
+                        amount = Math.min(gameState.cash, gameState.debt);
+                    } else {
+                        amount = parseInt(input);
+                    }
+
+                    if (isNaN(amount) || amount <= 0) {
+                        showMainMenu();
+                        return;
+                    }
+
+                    if (amount > gameState.cash) {
+                        cls();
+                        print('You don\'t have that much!', 'danger');
+                        print('');
+                        print('[ENTER] to continue');
+                        gameState.inputCallback = () => showLoanShark();
+                        return;
+                    }
+
+                    gameState.cash -= amount;
+                    gameState.debt -= amount;
+
+                    cls();
+                    if (gameState.debt <= 0) {
+                        gameState.debt = 0;
+                        print('DEBT PAID OFF!', 'success');
+                        print('');
+                        print('"We\'re square, kid. Good job."');
+                    } else {
+                        print('Paid ' + formatMoney(amount), 'success');
+                        print('');
+                        print('Remaining debt: ' + formatMoney(gameState.debt));
+                    }
+                    print('');
+                    print('[ENTER] to continue');
+                    gameState.inputCallback = () => showMainMenu();
+                };
+            } else {
+                print('"We\'re square, kid. No beef here."', 'success');
+                print('');
+                print('[ENTER] to go back');
+                gameState.inputCallback = () => showMainMenu();
+            }
+        }
+
+        function showInventory() {
+            cls();
+            gameState.currentScreen = 'inventory';
+
+            print('╔═══════════════════════════════════════╗');
+            print('║           YOUR INVENTORY              ║');
+            print('╠═══════════════════════════════════════╣');
+            print('║  Space used: ' + (getInventoryCount() + '/' + gameState.maxInventory).padEnd(25) + '║');
+            print('╠═══════════════════════════════════════╣');
+
+            let hasItems = false;
+            for (let candy in CANDIES) {
+                const owned = gameState.inventory[candy];
+                if (owned > 0) {
+                    hasItems = true;
+                    print('║  ' + CANDIES[candy].name.padEnd(25) + ('x' + owned).padEnd(10) + '║');
+                }
+            }
+
+            if (!hasItems) {
+                print('║  Your backpack is empty!              ║');
+            }
+
+            print('╚═══════════════════════════════════════╝');
+            print('');
+            print('[ENTER] to go back');
+
+            gameState.inputCallback = () => showMainMenu();
+        }
+
+        function showHelp() {
+            cls();
+            gameState.currentScreen = 'help';
+
+            print('╔═══════════════════════════════════════╗');
+            print('║              HOW TO PLAY              ║');
+            print('╚═══════════════════════════════════════╝');
+            print('');
+            print('GOAL: Make as much money as possible');
+            print('      in 30 days by trading candy!');
+            print('');
+            print('TIPS:');
+            print('• Buy LOW, sell HIGH');
+            print('• Watch for [LOW!] and [HIGH!] prices');
+            print('• Travel to find new prices each day');
+            print('• Pay off your debt - interest adds up!');
+            print('• Deposit cash to protect from muggers');
+            print('• Random events can help or hurt you');
+            print('');
+            print('PRICE GUIDE (normal range):');
+            print('  Lollipops:    $5 - $40');
+            print('  Pixie Sticks: $10 - $60');
+            print('  Gummy Bears:  $15 - $90');
+            print('  Sour Patch:   $50 - $300');
+            print('  Pop Rocks:    $100 - $700');
+            print('  Jawbreakers:  $200 - $1,200');
+            print('  Rock Candy:   $500 - $3,000');
+            print('  Truffles:     $1,000 - $6,000');
+            print('');
+            print('[ENTER] to go back');
+
+            gameState.inputCallback = () => showMainMenu();
+        }
+
+        function endGame() {
+            cls();
+            gameState.gameOver = true;
+
+            // Sell all remaining inventory at current prices
+            let inventoryValue = 0;
+            for (let candy in gameState.inventory) {
+                inventoryValue += gameState.inventory[candy] * gameState.prices[candy];
+            }
+
+            // Calculate final score
+            const finalScore = gameState.cash + gameState.bank + inventoryValue - gameState.debt;
+
+            print('╔═══════════════════════════════════════╗');
+            print('║           GAME OVER!                  ║');
+            print('║        30 Days Have Passed            ║');
+            print('╚═══════════════════════════════════════╝');
+            print('');
+            print('FINAL ACCOUNTING:');
+            printLine();
+            print('  Cash:           ' + formatMoney(gameState.cash));
+            print('  Bank:           ' + formatMoney(gameState.bank));
+            print('  Inventory:      ' + formatMoney(inventoryValue));
+            print('  Debt:           -' + formatMoney(gameState.debt), 'warning');
+            printLine();
+
+            if (finalScore >= 0) {
+                print('  NET WORTH:      ' + formatMoney(finalScore), 'success');
+            } else {
+                print('  NET WORTH:      -' + formatMoney(Math.abs(finalScore)), 'danger');
+            }
+
+            print('');
+
+            if (finalScore > gameState.highScore) {
+                gameState.highScore = finalScore;
+                localStorage.setItem('candyWarsHighScore', finalScore);
+                print('★ NEW HIGH SCORE! ★', 'success');
+                print('');
+
+                // Submit to leaderboard
+                Leaderboard.checkAndSubmitScore('candy-wars', finalScore);
+            }
+
+            if (gameState.debt > 0) {
+                print('The Candy King is NOT happy...', 'danger');
+                print('You still owe ' + formatMoney(gameState.debt) + '!');
+            } else if (finalScore > 50000) {
+                print('INCREDIBLE! You\'re the Candy KING!', 'success');
+            } else if (finalScore > 20000) {
+                print('Great job! You\'re a candy mogul!', 'success');
+            } else if (finalScore > 10000) {
+                print('Not bad! You made some sweet profits!');
+            } else if (finalScore > 0) {
+                print('You survived, but barely...');
+            } else {
+                print('Ouch! You\'re in the red!', 'danger');
+            }
+
+            print('');
+            print('Previous High Score: ' + formatMoney(gameState.highScore));
+            print('');
+            print('[ENTER] to play again');
+
+            gameState.inputCallback = () => showTitle();
+        }
+
+        function handleInput() {
+            const input = userInput.value.trim();
+            userInput.value = '';
+
+            if (gameState.inputCallback) {
+                gameState.inputCallback(input);
+            }
+        }
+
+        // Event listeners
+        submitBtn.addEventListener('click', handleInput);
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleInput();
+            }
+        });
+
+        // Start the game
+        showTitle();
+    </script>
+</body>
+</html>
